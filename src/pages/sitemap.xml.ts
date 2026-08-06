@@ -5,6 +5,10 @@ export const prerender = false;
 
 const SITE_URL = 'https://urban-acoustics-mumbai.vercel.app';
 
+interface PostSlug {
+  slug: string;
+}
+
 export const GET: APIRoute = async () => {
   const { data: posts, error } = await supabase
     .from('posts')
@@ -14,7 +18,7 @@ export const GET: APIRoute = async () => {
     console.error('Sitemap fetch error:', error);
   }
 
-  const urls = (posts || [])
+  const urls = ((posts as PostSlug[]) || [])
     .map(
       (post) => `
   <url>
@@ -39,7 +43,7 @@ export const GET: APIRoute = async () => {
     status: 200,
     headers: {
       'Content-Type': 'application/xml',
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
     },
   });
 };
