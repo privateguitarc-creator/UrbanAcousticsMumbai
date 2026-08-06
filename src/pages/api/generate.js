@@ -3,7 +3,6 @@ export const prerender = false;
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
 
-// Curated pool of high-resolution guitar stock photos
 const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop',
@@ -48,7 +47,7 @@ export async function GET() {
     const randomAuthor = authors && authors.length > 0 ? authors[Math.floor(Math.random() * authors.length)] : null;
     const selectedImage = GUITAR_HERO_IMAGES[Math.floor(Math.random() * GUITAR_HERO_IMAGES.length)];
 
-    const prompt = `You are an expert music instructor and SEO strategist for "Urban Acoustics Mumbai".
+    const prompt = `You are an expert music instructor and SEO strategist for "Guitar Classes in Mumbai".
 Write an extensive, highly engaging, localized SEO guide (800 to 1000 words) for learning guitar in ${randomLoc.name}, Mumbai for 2026.
 
 Structuring Requirements:
@@ -60,9 +59,9 @@ Structuring Requirements:
   4. How to Choose Between 1-on-1 Home Tutors and Music Academies.
   5. 5-Step Learning Roadmap for Beginners in 2026.
   6. Where to Buy & Maintain Guitars Near ${randomLoc.name}.
-- Interlink seamlessly using Markdown:
-  - Link to the main site: [Urban Acoustics Mumbai](https://urban-acoustics-mumbai.vercel.app)
-  - Link to home masterclasses: [1-on-1 Doorstep Guitar Masterclasses](https://urban-acoustics-mumbai.vercel.app/masterclass)
+- Interlink seamlessly using Markdown to target website:
+  - Link to main domain: [Guitar Classes in Mumbai](https://guitar-classes-in-mumbai.vercel.app/)
+  - Link to doorstep tutoring: [1-on-1 Doorstep Guitar Masterclasses](https://guitar-classes-in-mumbai.vercel.app/)
 - Ensure targeted local search phrases appear naturally (e.g. "best guitar classes in ${randomLoc.name}", "guitar teacher near ${randomLoc.name} Mumbai").
 
 Return STRICTLY a raw JSON object with keys:
@@ -90,7 +89,6 @@ Return STRICTLY a raw JSON object with keys:
       .replace(/(^-|-$)+/g, '');
     const uniqueSlug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Build full article body with inline featured image top banner and FAQs
     let fullContent = `![Guitar Learning in ${randomLoc.name}](${selectedImage})\n\n` + (generated.content || '');
     
     if (Array.isArray(generated.faqs) && generated.faqs.length > 0) {
