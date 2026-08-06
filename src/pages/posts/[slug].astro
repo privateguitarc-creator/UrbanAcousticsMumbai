@@ -1,5 +1,6 @@
 ---
 import { supabase } from '../../lib/supabase';
+import { marked } from 'marked';
 
 const { slug } = Astro.params;
 
@@ -21,7 +22,10 @@ const { data: relatedPosts } = await supabase
   .neq('slug', slug)
   .limit(3);
 
-// 3. Construct Article Schema safely
+// 3. Convert Markdown string to HTML
+const htmlContent = post.content ? marked.parse(post.content) : '';
+
+// 4. Construct Article Schema
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "Article",
@@ -38,7 +42,7 @@ const articleSchema = {
   }
 };
 
-// 4. Construct FAQ Schema (if FAQs exist)
+// 5. Construct FAQ Schema
 let faqSchema = null;
 if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
   faqSchema = {
@@ -87,7 +91,8 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
           />
         )}
 
-        <div class="content" set:html={post.content} />
+        <!-- Rendered HTML Content -->
+        <div class="content" set:html={htmlContent} />
       </article>
 
       {relatedPosts && relatedPosts.length > 0 && (
@@ -110,6 +115,44 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
         </section>
       )}
     </main>
+
+    <!-- Global Styles for Parsed Markdown Elements -->
+    <style is:global>
+      .content h1, .content h2, .content h3 {
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+        font-weight: 700;
+        color: #111827;
+      }
+      .content h2 { font-size: 1.5rem; }
+      .content h3 { font-size: 1.25rem; }
+      .content p {
+        line-height: 1.75;
+        margin-bottom: 1.25rem;
+        color: #374151;
+        font-size: 1.05rem;
+      }
+      .content img {
+        width: 100%;
+        max-height: 400px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin: 1.5rem 0;
+      }
+      .content ul, .content ol {
+        margin-bottom: 1.25rem;
+        padding-left: 1.5rem;
+        color: #374151;
+      }
+      .content li {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+      }
+      .content a {
+        color: #2563eb;
+        text-decoration: underline;
+      }
+    </style>
 
   </body>
 </html>
