@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import Groq from '@groq/sdk';
+import Groq from 'groq-sdk';
 import 'dotenv/config';
 
 // Reads either PUBLIC_ or standard Supabase secret names
