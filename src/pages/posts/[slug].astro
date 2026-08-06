@@ -14,14 +14,14 @@ if (error || !post) {
   return Astro.redirect('/404');
 }
 
-// 2. Fetch 3 related posts for internal cross-linking
+// 2. Fetch related posts for cross-linking
 const { data: relatedPosts } = await supabase
   .from('posts')
   .select('title, slug')
   .neq('slug', slug)
   .limit(3);
 
-// 3. Construct Article Schema
+// 3. Construct Article Schema safely
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "Article",
@@ -35,8 +35,7 @@ const articleSchema = {
     "@type": "Organization",
     "name": "Urban Acoustics Mumbai",
     "url": "https://urban-acoustics-mumbai.vercel.app"
-  },
-  "datePublished": post.created_at
+  }
 };
 
 // 4. Construct FAQ Schema (if FAQs exist)
@@ -64,7 +63,7 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
     <title>{post.title} | Urban Acoustics Mumbai</title>
     <meta name="description" content={post.meta_description || post.title} />
 
-    <!-- Inject Structured Data Schemas -->
+    <!-- Structured Data -->
     <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
     {faqSchema && (
       <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
@@ -91,7 +90,6 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
         <div class="content" set:html={post.content} />
       </article>
 
-      <!-- Dynamic Internal Cross-Linking Block -->
       {relatedPosts && relatedPosts.length > 0 && (
         <section style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
           <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">
