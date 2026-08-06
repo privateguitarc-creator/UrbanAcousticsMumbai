@@ -1,10 +1,10 @@
 ---
 import { supabase } from '../lib/supabase';
 
+// Fetch all posts from Supabase
 const { data: posts, error } = await supabase
   .from('posts')
-  .select('title, slug, created_at')
-  .order('created_at', { ascending: false });
+  .select('title, slug');
 
 if (error) {
   console.error('Error fetching posts:', error);
@@ -40,9 +40,6 @@ if (error) {
               <a href={`/posts/${post.slug}`} style="font-size: 1.125rem; font-weight: 600; color: #2563eb; text-decoration: none;">
                 {post.title}
               </a>
-              <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0.35rem; margin-bottom: 0;">
-                Published: {new Date(post.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
             </li>
           ))}
         </ul>
