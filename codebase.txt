@@ -1,0 +1,886 @@
+==========================================
+FILE: src/lib/supabase.js
+==========================================
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 
+  import.meta.env.PUBLIC_SUPABASE_URL || 
+  process.env.PUBLIC_SUPABASE_URL || 
+  '';
+
+const supabaseAnonKey = 
+  import.meta.env.PUBLIC_SUPABASE_ANON_KEY || 
+  process.env.PUBLIC_SUPABASE_ANON_KEY || 
+  '';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+
+==========================================
+FILE: src/pages/sitemap.xml.ts
+==========================================
+import type { APIRoute } from 'astro';
+import { supabase } from '../lib/supabase';
+
+export const prerender = false;
+
+const SITE_URL = 'https://urban-acoustics-mumbai.vercel.app';
+
+interface PostSlug {
+  slug: string;
+}
+
+export const GET: APIRoute = async () => {
+  const { data: posts, error } = await supabase
+    .from('posts')
+    .select('slug');
+
+  if (error) {
+    console.error('Sitemap fetch error:', error);
+  }
+
+  const urls = ((posts as PostSlug[]) || [])
+    .map(
+      (post) => `
+  <url>
+    <loc>${SITE_URL}/posts/${post.slug}</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`
+    )
+    .join('');
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${SITE_URL}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>${urls}
+</urlset>`;
+
+  return new Response(xml, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/xml',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+    },
+  });
+};
+
+
+==========================================
+FILE: src/pages/posts/[slug].astro
+==========================================
+---
+import { supabase } from '../../lib/supabase';
+import { marked } from 'marked';
+
+const { slug } = Astro.params;
+
+// 1. Fetch current post
+const { data: post, error } = await supabase
+  .from('posts')
+  .select('*')
+  .eq('slug', slug)
+  .single();
+
+if (error || !post) {
+  return Astro.redirect('/404');
+}
+
+// 2. Fetch related posts for cross-linking
+const { data: relatedPosts } = await supabase
+  .from('posts')
+  .select('title, slug')
+  .neq('slug', slug)
+  .limit(3);
+
+// 3. Convert Markdown string to HTML
+const htmlContent = post.content ? marked.parse(post.content) : '';
+
+// 4. Construct Article Schema
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": post.title,
+  "description": post.meta_description || post.title,
+  "author": {
+    "@type": "Organization",
+    "name": "Urban Acoustics Mumbai"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Urban Acoustics Mumbai",
+    "url": "https://urban-acoustics-mumbai.vercel.app"
+  }
+};
+
+// 5. Construct FAQ Schema
+let faqSchema = null;
+if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
+  faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": post.faqs.map((faq: { question: string; answer: string }) => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{post.title} | Urban Acoustics Mumbai</title>
+    <meta name="description" content={post.meta_description || post.title} />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+    {faqSchema && (
+      <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+    )}
+  </head>
+  <body style="max-width: 800px; margin: 0 auto; padding: 2rem; font-family: system-ui, sans-serif; background-color: #f9fafb; color: #111827;">
+    
+    <header style="margin-bottom: 2rem;">
+      <a href="/guides" style="color: #2563eb; font-weight: 600; text-decoration: none;">← All Location Guides</a>
+    </header>
+
+    <main>
+      <article>
+        <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.2;">{post.title}</h1>
+        
+        {post.hero_image && (
+          <img 
+            src={post.hero_image} 
+            alt={post.title} 
+            style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
+          />
+        )}
+
+        <!-- Rendered HTML Content -->
+        <div class="content" set:html={htmlContent} />
+      </article>
+
+      <!-- Doorstep Masterclass CTA Section -->
+      <div style="margin: 3rem 0; padding: 2.5rem 2rem; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; text-align: center;">
+        <h3 style="font-size: 1.35rem; font-weight: 700; color: #1e3a8a; margin-top: 0; margin-bottom: 0.5rem;">
+          Want Personalized Guitar Coaching at Home?
+        </h3>
+        <p style="color: #3b82f6; margin-top: 0; margin-bottom: 1.5rem; font-size: 0.95rem;">
+          Learn from expert tutors across Mumbai with tailored 1-on-1 doorstep sessions.
+        </p>
+        <a 
+          href="https://guitar-classes-in-mumbai.vercel.app/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style="display: inline-block; background-color: #2563eb; color: #ffffff; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-size: 0.95rem;"
+        >
+          Book Your Doorstep Masterclass →
+        </a>
+      </div>
+
+      {relatedPosts && relatedPosts.length > 0 && (
+        <section style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+          <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">
+            Related Local Guides in Mumbai
+          </h2>
+          <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.75rem;">
+            {relatedPosts.map((related) => (
+              <li>
+                <a 
+                  href={`/posts/${related.slug}`} 
+                  style="color: #2563eb; text-decoration: underline; font-weight: 500;"
+                >
+                  {related.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </main>
+
+    <!-- Global Styles for Parsed Content -->
+    <style is:global>
+      .content h1, .content h2, .content h3 {
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+        font-weight: 700;
+        color: #111827;
+      }
+      .content h2 { font-size: 1.5rem; }
+      .content h3 { font-size: 1.25rem; }
+      .content p {
+        line-height: 1.75;
+        margin-bottom: 1.25rem;
+        color: #374151;
+        font-size: 1.05rem;
+      }
+      .content img {
+        width: 100%;
+        max-height: 400px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin: 1.5rem 0;
+      }
+      .content ul, .content ol {
+        margin-bottom: 1.25rem;
+        padding-left: 1.5rem;
+        color: #374151;
+      }
+      .content li {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+      }
+      .content a {
+        color: #2563eb;
+        text-decoration: underline;
+      }
+    </style>
+
+  </body>
+</html>
+
+
+==========================================
+FILE: src/pages/index.astro
+==========================================
+---
+import { supabase } from '../lib/supabase';
+
+// Fetch published posts safely without referencing missing columns
+const { data: posts, error } = await supabase
+  .from('posts')
+  .select('title, slug');
+
+if (error) {
+  console.error('Error fetching posts for index:', error);
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Urban Acoustics Mumbai | Guitar Classes & Coaching Directory</title>
+    <meta name="description" content="Discover top localized guitar classes, music tutors, and coaching academies across Mumbai." />
+  </head>
+  <body style="max-width: 800px; margin: 0 auto; padding: 2rem; font-family: system-ui, sans-serif; background-color: #f9fafb; color: #111827;">
+    
+    <header style="margin-bottom: 2rem;">
+      <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem;">Urban Acoustics Mumbai</h1>
+      <p style="color: #4b5563;">Your localized directory for guitar coaching and academies across Mumbai.</p>
+      <nav style="margin-top: 1rem;">
+        <a href="/guides" style="color: #2563eb; font-weight: 600; text-decoration: none;">Browse All Location Guides →</a>
+      </nav>
+    </header>
+
+    <main>
+      <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">Latest Guides</h2>
+      {(!posts || posts.length === 0) ? (
+        <p style="color: #6b7280;">No guides published yet.</p>
+      ) : (
+        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1rem;">
+          {posts.map((post) => (
+            <li style="padding: 1.25rem; background: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb;">
+              <a href={`/posts/${post.slug}`} style="font-size: 1.125rem; font-weight: 600; color: #2563eb; text-decoration: none;">
+                {post.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+
+  </body>
+</html>
+
+
+==========================================
+FILE: src/pages/robots.txt.ts
+==========================================
+import type { APIRoute } from 'astro';
+
+export const prerender = false;
+
+export const GET: APIRoute = () => {
+  const robots = `User-agent: *
+Allow: /
+
+Sitemap: https://urban-acoustics-mumbai.vercel.app/sitemap.xml`;
+
+  return new Response(robots, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+    },
+  });
+};
+
+
+==========================================
+FILE: src/pages/guides.astro
+==========================================
+---
+import { supabase } from '../lib/supabase';
+
+// Fetch all posts from Supabase
+const { data: posts, error } = await supabase
+  .from('posts')
+  .select('title, slug');
+
+if (error) {
+  console.error('Error fetching posts:', error);
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All Mumbai Guitar Class Guides | Urban Acoustics</title>
+    <meta name="description" content="Complete directory of localized guitar coaching, academies, and tutor guides across Mumbai." />
+  </head>
+  <body style="max-width: 800px; margin: 0 auto; padding: 2rem; font-family: system-ui, sans-serif; background-color: #f9fafb; color: #111827;">
+    
+    <header style="margin-bottom: 2rem;">
+      <a href="/" style="color: #2563eb; font-weight: 600; text-decoration: none;">← Home</a>
+      <h1 style="font-size: 2.25rem; font-weight: 800; margin-top: 1rem; margin-bottom: 0.5rem;">
+        All Mumbai Location Guides
+      </h1>
+      <p style="color: #4b5563;">
+        Browse our full directory of localized guitar coaching and academy guides across Mumbai.
+      </p>
+    </header>
+
+    <main>
+      {(!posts || posts.length === 0) ? (
+        <p>No posts published yet.</p>
+      ) : (
+        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1rem;">
+          {posts.map((post) => (
+            <li style="padding: 1.25rem; background: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb;">
+              <a href={`/posts/${post.slug}`} style="font-size: 1.125rem; font-weight: 600; color: #2563eb; text-decoration: none;">
+                {post.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+
+  </body>
+</html>
+
+
+==========================================
+FILE: scripts/generate-posts.mjs
+==========================================
+process.loadEnvFile();
+import { createClient } from '@supabase/supabase-js';
+import Groq from 'groq-sdk';
+import 'dotenv/config';
+
+// Reads either PUBLIC_ or standard Supabase secret names
+const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
+
+// Create Supabase client using the service role key to bypass RLS
+const supabase = createClient(supabaseUrl, supabaseKey);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// List of target localities in Mumbai
+const localities = [
+  'Bandra West',
+  'Juhu',
+  'Powai',
+  'Dadar West',
+  'Thane West',
+  'Goregaon East',
+  'Worli',
+  'Malad West',
+  'Chembur',
+  'Vashi'
+];
+
+// High-resolution royalty-free guitar images
+// High-resolution royalty-free landscape guitar banners
+const guitarImages = [
+  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1564186763535-ebb21ef5277f?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?auto=format&fit=crop&w=1200&h=630&q=80'
+];
+
+async function generateArticle(locality) {
+  console.log(`Generating article with image for: ${locality}...`);
+
+  const prompt = `
+Write a comprehensive, SEO-optimized guide titled "Top 3 Options for Learning Guitar in ${locality} (2026 Guide)".
+Target audience: Beginners and enthusiasts looking for guitar tutors or classes in ${locality}, Mumbai.
+
+Format the output strictly in Markdown with these guidelines:
+1. Include an intro describing learning guitar in ${locality} with reference to local landmarks or culture.
+2. Outline 3 learning paths: Self-learning, Local music academies, and Doorstep masterclasses.
+3. Highlight doorstep masterclass tuition as the top choice for convenience.
+4. Naturally insert an anchor link with text "book a dedicated 24-session doorstep masterclass here" pointing to: https://guitar-classes-in-mumbai.vercel.app/
+5. Include a conclusion.
+`;
+
+  const chatCompletion = await groq.chat.completions.create({
+    messages: [{ role: 'user', content: prompt }],
+    model: 'llama-3.3-70b-versatile',
+  });
+
+  const rawMarkdown = chatCompletion.choices[0]?.message?.content || '';
+  
+  // Attach a random guitar image to the top of the article
+  const randomImage = guitarImages[Math.floor(Math.random() * guitarImages.length)];
+  const imageHeader = `![Guitar Classes in ${locality}](${randomImage})\n\n`;
+  const content = imageHeader + rawMarkdown;
+
+  const title = `Top 3 Options for Learning Guitar in ${locality} (2026 Guide)`;
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, '-') + `-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  return { title, slug, content };
+}
+
+async function run() {
+  const locality = localities[Math.floor(Math.random() * localities.length)];
+  
+  try {
+    const post = await generateArticle(locality);
+
+    const { error } = await supabase
+      .from('posts')
+      .insert([{ 
+        title: post.title, 
+        slug: post.slug, 
+        content: post.content,
+        post_type: 'article',
+        anchor_type: 'satellite'
+      }]);
+
+    if (error) {
+      console.error(`Error inserting ${locality}:`, error.message);
+    } else {
+      console.log(`Successfully published: ${post.title}`);
+    }
+  } catch (err) {
+    console.error(`Failed generation for ${locality}:`, err);
+  }
+}
+
+run();
+
+
+==========================================
+FILE: scripts/generate-post.js
+==========================================
+// scripts/generate-post.js
+import 'dotenv/config';
+import { createClient } from '@supabase/supabase-js';
+import OpenAI from 'openai';
+
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gxlrjksmttokqnvirlxa.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
+
+// Groq's high-quality model (Free Tier)
+const MODEL_NAME = 'llama-3.3-70b-versatile';
+
+if (!SUPABASE_KEY || !GROQ_API_KEY) {
+  console.error("Missing SUPABASE_KEY or GROQ_API_KEY in environment variables.");
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Connect to Groq Cloud API
+const groq = new OpenAI({
+  apiKey: GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
+
+const POST_TYPES = [
+  {
+    type: 'roundup',
+    titleTemplate: (loc) => `Top 3 Options for Learning Guitar in ${loc.name} (${new Date().getFullYear()} Guide)`,
+    promptFocus: 'Compare self-learning, group academies, and doorstep master tuition.'
+  },
+  {
+    type: 'traffic_solution',
+    titleTemplate: (loc) => `Why Commuting to Music Academies in ${loc.name} Kills Guitar Progress`,
+    promptFocus: 'Discuss traffic delays, energy drain after work/school, and why doorstep instruction solves this.'
+  },
+  {
+    type: 'guide',
+    titleTemplate: (loc) => `How to Go From Zero to Playing Songs in 3 Weeks in ${loc.name}`,
+    promptFocus: 'A step-by-step 3-week practice roadmap for beginners.'
+  },
+  {
+    type: 'deep_dive',
+    titleTemplate: (loc) => `Private Home Guitar Lessons in ${loc.name}: What Parents & Adult Learners Need to Know`,
+    promptFocus: 'Safety, one-on-one attention, customized pacing, and chord mechanics.'
+  },
+  {
+    type: 'gear',
+    titleTemplate: (loc) => `Best Acoustic Guitars for Beginners Near ${loc.name} & How to Practice Properly`,
+    promptFocus: 'Budget guitar recommendations, action height, and local practice habits.'
+  }
+];
+
+const ANCHOR_STYLES = [
+  {
+    type: 'exact',
+    getAnchor: () => `[Guitar Classes in Mumbai](https://guitar-classes-in-mumbai.vercel.app/)`
+  },
+  {
+    type: 'local',
+    getAnchor: (loc) => `[doorstep guitar tuition in ${loc.name}](https://guitar-classes-in-mumbai.vercel.app/)`
+  },
+  {
+    type: 'brand',
+    getAnchor: () => `[guitar-classes-in-mumbai.vercel.app](https://guitar-classes-in-mumbai.vercel.app/)`
+  },
+  {
+    type: 'cta',
+    getAnchor: () => `[book a dedicated 24-session doorstep masterclass here](https://guitar-classes-in-mumbai.vercel.app/)`
+  }
+];
+
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function run() {
+  console.log(`Starting automated post generation with Groq API using ${MODEL_NAME}...`);
+
+  const { data: locations, error: locError } = await supabase.from('locations').select('*');
+  const { data: authors, error: authError } = await supabase.from('authors').select('*');
+
+  if (locError || authError || !locations?.length || !authors?.length) {
+    throw new Error("Failed to fetch locations or authors from Supabase.");
+  }
+
+  const location = locations[Math.floor(Math.random() * locations.length)];
+  const author = authors[Math.floor(Math.random() * authors.length)];
+
+  const postConfig = POST_TYPES[Math.floor(Math.random() * POST_TYPES.length)];
+  const anchorConfig = ANCHOR_STYLES[Math.floor(Math.random() * ANCHOR_STYLES.length)];
+
+  const title = postConfig.titleTemplate(location);
+  const slug = `${slugify(title)}-${Date.now().toString().slice(-4)}`;
+  const anchorMarkdown = anchorConfig.getAnchor(location);
+
+  const prompt = `
+  You are ${author.name}, a ${author.role} based in Mumbai.
+  Write a highly detailed, engaging, and professional 1,200-word blog post in Markdown format.
+
+  **ARTICLE DETAILS:**
+  - Title: ${title}
+  - Location/Neighborhood: ${location.name} (Landmarks: ${location.landmarks})
+  - Article Focus: ${postConfig.promptFocus}
+
+  **EDITORIAL MANDATE:**
+  1. Write from the perspective of an experienced local music writer in Mumbai. Mention landmarks like ${location.landmarks} naturally.
+  2. Explain the physical challenges of learning guitar (finger soreness, rhythm timing, switching open chords).
+  3. Address the reality of Mumbai travel time (SV Road, Link Road, Western Express Highway traffic) and why doorstep instruction solves this.
+  4. In the middle of the article (under an appropriate H2 heading), seamlessly embed this EXACT markdown link into a sentence:
+     ${anchorMarkdown}
+  5. Include 4–5 H2 sections, bullet points, and practical tips.
+  6. DO NOT sound like cheap AI sales copy. Write like an encyclopedic, informative local publication.
+
+  Provide output starting directly with the H1 title (# Title).
+  `;
+
+  const completion = await groq.chat.completions.create({
+    model: MODEL_NAME,
+    messages: [
+      { role: "system", content: "You are an expert music educator and local Mumbai journalist writing high-quality blog content." },
+      { role: "user", content: prompt }
+    ],
+  });
+
+  const rawText = completion.choices[0].message.content;
+
+  const summaryCompletion = await groq.chat.completions.create({
+    model: MODEL_NAME,
+    messages: [
+      { role: "system", content: "You are an SEO expert. Output ONLY the 2-sentence meta description. Do NOT include conversational intros like 'Here is a summary', setups, or quote marks." },
+      { role: "user", content: `Summarize this article in 2 clear sentences for a search engine meta description:\n\n${rawText.slice(0, 1000)}` }
+    ],
+  });
+  
+  let summary = summaryCompletion.choices[0].message.content.trim();
+  // Strip out any accidental prefix if the model still includes it
+  summary = summary.replace(/^(here is|here's|this is)[^:]*:\s*/i, '').replace(/^["']|["']$/g, '');
+
+  const imageUrl = `https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=1200&q=80`;
+
+  const { data: insertedPost, error: insertError } = await supabase.from('posts').insert({
+    title,
+    slug,
+    summary,
+    content: rawText,
+    featured_image: imageUrl,
+    location_id: location.id,
+    author_id: author.id,
+    post_type: postConfig.type,
+    anchor_type: anchorConfig.type,
+    published_at: new Date().toISOString()
+  }).select().single();
+
+  if (insertError) {
+    console.error("Supabase Insert Error:", insertError);
+  } else {
+    console.log(`\n✅ Successfully published post to Supabase!`);
+    console.log(`Title: "${title}"`);
+    console.log(`Author: ${author.name} | Location: ${location.name}`);
+  }
+}
+
+run().catch(console.error);
+
+
+==========================================
+FILE: scripts/generate.js
+==========================================
+import Groq from 'groq-sdk';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// Fallback logic to support both GitHub Actions secrets and local/Vercel .env
+const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const guitarImages = [
+  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1564186763535-ebb21ef5277f?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop'
+];
+
+// Target Localities Queue
+const targetLocalities = [
+  'Bandra West', 'Andheri East', 'Powai', 'Juhu', 'Dadar', 
+  'Goregaon East', 'Borivali West', 'Lower Parel', 'Thane West', 'Chembur',
+  'Khar West', 'Santacruz', 'Malad West', 'Vile Parle', 'Worli',
+  'Navi Mumbai', 'Ghatkopar', 'Mulund', 'Colaba', 'Prabhadevi'
+];
+
+function generateSlug(title) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-') + `-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+async function getNextUnpublishedLocality() {
+  const { data: existingPosts } = await supabase.from('posts').select('slug');
+  const existingSlugs = (existingPosts || []).map((p) => p.slug);
+
+  for (const loc of targetLocalities) {
+    const testSlugBase = `best-guitar-classes-in-${loc.toLowerCase().replace(/\s+/g, '-')}-mumbai`;
+    const isAlreadyPublished = existingSlugs.some((s) => s.startsWith(testSlugBase));
+    if (!isAlreadyPublished) {
+      return loc;
+    }
+  }
+  // Fallback to random locality if all initial queued localities are already generated
+  return targetLocalities[Math.floor(Math.random() * targetLocalities.length)];
+}
+
+async function generatePremiumPost() {
+  const locality = await getNextUnpublishedLocality();
+  console.log(`Starting generation for locality: ${locality}`);
+
+  const prompt = `You are a professional music educator and local Mumbai music journalist. Write an exhaustive, highly engaging, premium 1200+ word guide on learning guitar in ${locality}, Mumbai.
+
+Requirements for Search Engine Ranking:
+1. Title: Create an enticing, high-CTR main H1 header.
+2. Structure:
+   - Detailed introduction on music culture in ${locality} with specific local landmarks or transit references.
+   - Comprehensive comparison between 1-on-1 Doorstep Home Tutors vs local academies in ${locality}. Include a markdown comparison table covering Fees, Flexibility, and Personalized Feedback.
+   - Realistic Fee Structure in INR for ${locality} (Beginner vs Intermediate levels).
+   - Recommended 4-Week Acoustic Guitar Starter Roadmap for adults and kids.
+   - 4-5 Frequently Asked Questions (FAQ section) with direct answers.
+3. Tone: Authoritative, helpful, warm, and hyper-local to Mumbai. Avoid repetitive fluff; focus on actionable insights.`;
+
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: 'You create expert-level, authoritative local educational content formatted in clean Markdown.' },
+        { role: 'user', content: prompt }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.6,
+    });
+
+    const rawMarkdown = chatCompletion.choices[0]?.message?.content || '';
+    const selectedImage = guitarImages[Math.floor(Math.random() * guitarImages.length)];
+    
+    // Attach hero image at top of Markdown content
+    const content = `![Guitar Coaching in ${locality}](${selectedImage})\n\n${rawMarkdown}`;
+    const title = `Best Guitar Classes in ${locality}, Mumbai: 2026 Complete Guide`;
+    const slug = generateSlug(`best-guitar-classes-in-${locality}-mumbai`);
+
+    const { error } = await supabase
+      .from('posts')
+      .insert([
+        { 
+          title, 
+          slug, 
+          content,
+          post_type: 'post',
+          anchor_type: 'local'
+        }
+      ]);
+
+    if (error) {
+      console.error(`Database insert error for ${locality}:`, error.message);
+    } else {
+      console.log(`[Success] Published premium guide for ${locality} (Slug: ${slug})`);
+    }
+  } catch (err) {
+    console.error(`Failed generation for ${locality}:`, err.message);
+  }
+}
+
+generatePremiumPost();
+
+
+==========================================
+FILE: .github/workflows/generate-post.yml
+==========================================
+name: Automated SEO Post Publisher
+
+on:
+  schedule:
+    # Runs every day at 06:00 AM UTC (11:30 AM IST)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  publish-post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run post generation script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: node scripts/generate-post.js
+
+
+==========================================
+FILE: .github/workflows/auto-publish.yml
+==========================================
+name: 4-Hour Programmatic Content Publisher
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # Triggers every 4 hours
+  workflow_dispatch:
+
+jobs:
+  publish-locality-guide:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Execute single premium post generation
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/generate.js
+
+
+==========================================
+FILE: astro.config.mjs
+==========================================
+import { defineConfig } from 'astro/config';
+import vercel from '@astrojs/vercel';
+
+export default defineConfig({
+  output: 'server',
+  adapter: vercel()
+});
+
+
+==========================================
+FILE: package.json
+==========================================
+{
+  "name": "urban-acoustics-mumbai",
+  "version": "1.0.0",
+  "description": "Automated SEO publishing pipeline for UrbanAcousticsMumbai",
+  "type": "module",
+  "main": "scripts/generate-posts.mjs",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "generate": "node scripts/generate-posts.mjs"
+  },
+  "dependencies": {
+    "@astrojs/vercel": "^11.0.5",
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.112.1",
+    "astro": "^7.1.6",
+    "dotenv": "^16.6.1",
+    "groq-sdk": "^1.5.0",
+    "marked": "^18.0.9",
+    "openai": "^7.4.0"
+  }
+}
+
+
