@@ -1,14 +1,16 @@
+export const prerender = false;
+
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
 
-export default async function handler(req, res) {
+export async function GET() {
   try {
     const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
     const groqKey = process.env.GROQ_API_KEY;
 
     if (!supabaseUrl || !supabaseKey || !groqKey) {
-      return res.status(500).json({ error: 'Missing environment variables on Vercel' });
+      return new Response(JSON.stringify({ error: 'Missing environment variables' }), { status: 500 });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -18,7 +20,7 @@ export default async function handler(req, res) {
     const { data: authors } = await supabase.from('authors').select('*');
 
     if (!locations || locations.length === 0) {
-      return res.status(400).json({ error: 'No locations found in Supabase' });
+      return new Response(JSON.stringify({ error: 'No locations found' }), { status: 400 });
     }
 
     const randomLoc = locations[Math.floor(Math.random() * locations.length)];
@@ -53,8 +55,14 @@ export default async function handler(req, res) {
 
     if (insertError) throw insertError;
 
-    return res.status(200).json({ success: true, post: insertedPost[0] });
+    return new Response(JSON.stringify({ success: true, post: insertedPost[0] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
