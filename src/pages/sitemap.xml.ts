@@ -1,22 +1,28 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../lib/supabase';
 
+export const prerender = false;
+
 const SITE_URL = 'https://urban-acoustics-mumbai.vercel.app';
 
 export const GET: APIRoute = async () => {
-  const { data: posts } = await supabase
+  const { data: posts, error } = await supabase
     .from('posts')
     .select('slug, created_at');
+
+  if (error) {
+    console.error('Sitemap fetch error:', error);
+  }
 
   const urls = (posts || [])
     .map(
       (post) => `
-    <url>
-      <loc>${SITE_URL}/posts/${post.slug}</loc>
-      <lastmod>${new Date(post.created_at || Date.now()).toISOString()}</lastmod>
-      <changefreq>weekly</changefreq>
-      <priority>0.8</priority>
-    </url>`
+  <url>
+    <loc>${SITE_URL}/posts/${post.slug}</loc>
+    <lastmod>${new Date(post.created_at || Date.now()).toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`
     )
     .join('');
 
@@ -33,6 +39,7 @@ export const GET: APIRoute = async () => {
     status: 200,
     headers: {
       'Content-Type': 'application/xml',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
     },
   });
 };
