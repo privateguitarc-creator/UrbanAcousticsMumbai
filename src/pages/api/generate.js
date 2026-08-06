@@ -67,14 +67,14 @@ export async function GET() {
       .replace(/(^-|-$)+/g, '');
     const uniqueSlug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // 6. Insert Post into Supabase
+   // 6. Insert Post into Supabase
     const { data: insertedPost, error: insertError } = await supabase
       .from('posts')
       .insert([
         {
           title: generated.title,
           slug: uniqueSlug,
-          excerpt: generated.excerpt || generated.summary || '',
+          summary: generated.excerpt || generated.summary || '', // <--- Changed 'excerpt' to 'summary'
           content: generated.content,
           faqs: generated.faqs || [],
           location_id: randomLoc.id,
