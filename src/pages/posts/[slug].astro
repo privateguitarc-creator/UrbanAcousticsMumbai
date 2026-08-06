@@ -95,8 +95,26 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
         <div class="content" set:html={htmlContent} />
       </article>
 
+      <!-- Doorstep Masterclass CTA Section -->
+      <div style="margin: 3rem 0; padding: 2.5rem 2rem; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; text-align: center;">
+        <h3 style="font-size: 1.35rem; font-weight: 700; color: #1e3a8a; margin-top: 0; margin-bottom: 0.5rem;">
+          Want Personalized Guitar Coaching at Home?
+        </h3>
+        <p style="color: #3b82f6; margin-top: 0; margin-bottom: 1.5rem; font-size: 0.95rem;">
+          Learn from expert tutors across Mumbai with tailored 1-on-1 doorstep sessions.
+        </p>
+        <a 
+          href="https://guitar-classes-in-mumbai.vercel.app/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style="display: inline-block; background-color: #2563eb; color: #ffffff; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-size: 0.95rem;"
+        >
+          Book Your Doorstep Masterclass →
+        </a>
+      </div>
+
       {relatedPosts && relatedPosts.length > 0 && (
-        <section style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+        <section style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
           <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">
             Related Local Guides in Mumbai
           </h2>
@@ -116,7 +134,7 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
       )}
     </main>
 
-    <!-- Global Styles for Parsed Markdown Elements -->
+    <!-- Global Styles for Parsed Content -->
     <style is:global>
       .content h1, .content h2, .content h3 {
         margin-top: 2rem;
