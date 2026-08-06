@@ -56,14 +56,13 @@ export async function GET() {
       .replace(/(^-|-$)+/g, '');
     const uniqueSlug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Combine content and FAQs into a single text body
     let fullContent = generated.content || '';
     if (Array.isArray(generated.faqs) && generated.faqs.length > 0) {
       fullContent += '\n\n## Frequently Asked Questions\n\n' +
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
     }
 
-   // 6. Insert Post into Supabase
+    // Insert payload including required metadata fields
     const { data: insertedPost, error: insertError } = await supabase
       .from('posts')
       .insert([
@@ -72,14 +71,15 @@ export async function GET() {
           slug: uniqueSlug,
           summary: generated.excerpt || generated.summary || '',
           content: fullContent,
-          post_type: 'guide', // <--- ADD THIS FIELD
+          post_type: 'guide',
+          anchor_type: 'location',
           location_id: randomLoc.id,
           author_id: randomAuthor ? randomAuthor.id : null,
           published_at: new Date().toISOString()
         }
       ])
       .select();
-      
+
     if (insertError) {
       throw new Error(`Supabase Insert Failed: ${insertError.message}`);
     }
