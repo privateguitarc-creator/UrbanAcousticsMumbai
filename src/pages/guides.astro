@@ -1,7 +1,6 @@
 ---
 import { supabase } from '../lib/supabase';
 
-// Fetch all posts ordered by newest first
 const { data: posts, error } = await supabase
   .from('posts')
   .select('title, slug, created_at')

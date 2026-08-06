@@ -1,5 +1,4 @@
 ---
-import Layout from '../../layouts/Layout.astro';
 import { supabase } from '../../lib/supabase';
 
 const { slug } = Astro.params;
@@ -27,7 +26,7 @@ const articleSchema = {
   "@context": "https://schema.org",
   "@type": "Article",
   "headline": post.title,
-  "description": post.meta_description || post.excerpt || post.title,
+  "description": post.meta_description || post.title,
   "author": {
     "@type": "Organization",
     "name": "Urban Acoustics Mumbai"
@@ -40,7 +39,7 @@ const articleSchema = {
   "datePublished": post.created_at
 };
 
-// 4. Construct FAQ Schema (if FAQs exist in post JSON data)
+// 4. Construct FAQ Schema (if FAQs exist)
 let faqSchema = null;
 if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
   faqSchema = {
@@ -58,47 +57,61 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
 }
 ---
 
-<Layout title={post.title} description={post.meta_description}>
-  <!-- Inject Structured Data Schemas -->
-  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
-  {faqSchema && (
-    <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
-  )}
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{post.title} | Urban Acoustics Mumbai</title>
+    <meta name="description" content={post.meta_description || post.title} />
 
-  <main style="max-width: 800px; margin: 0 auto; padding: 2rem 1rem;">
-    <article>
-      <h1 style="font-size: 2.25rem; font-weight: 700; margin-bottom: 1.5rem;">{post.title}</h1>
-      
-      {post.hero_image && (
-        <img 
-          src={post.hero_image} 
-          alt={post.title} 
-          style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
-        />
-      )}
-
-      <div class="content" set:html={post.content} />
-    </article>
-
-    <!-- Dynamic Internal Cross-Linking Block -->
-    {relatedPosts && relatedPosts.length > 0 && (
-      <section style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
-        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
-          Related Local Guides in Mumbai
-        </h2>
-        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.75rem;">
-          {relatedPosts.map((related) => (
-            <li>
-              <a 
-                href={`/posts/${related.slug}`} 
-                style="color: #2563eb; text-decoration: underline; font-weight: 500;"
-              >
-                {related.title}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
+    <!-- Inject Structured Data Schemas -->
+    <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+    {faqSchema && (
+      <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
     )}
-  </main>
-</Layout>
+  </head>
+  <body style="max-width: 800px; margin: 0 auto; padding: 2rem; font-family: system-ui, sans-serif; background-color: #f9fafb; color: #111827;">
+    
+    <header style="margin-bottom: 2rem;">
+      <a href="/guides" style="color: #2563eb; font-weight: 600; text-decoration: none;">← All Location Guides</a>
+    </header>
+
+    <main>
+      <article>
+        <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.2;">{post.title}</h1>
+        
+        {post.hero_image && (
+          <img 
+            src={post.hero_image} 
+            alt={post.title} 
+            style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
+          />
+        )}
+
+        <div class="content" set:html={post.content} />
+      </article>
+
+      <!-- Dynamic Internal Cross-Linking Block -->
+      {relatedPosts && relatedPosts.length > 0 && (
+        <section style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+          <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem;">
+            Related Local Guides in Mumbai
+          </h2>
+          <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.75rem;">
+            {relatedPosts.map((related) => (
+              <li>
+                <a 
+                  href={`/posts/${related.slug}`} 
+                  style="color: #2563eb; text-decoration: underline; font-weight: 500;"
+                >
+                  {related.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </main>
+
+  </body>
+</html>
