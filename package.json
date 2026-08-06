@@ -1,0 +1,17 @@
+{
+  "name": "urban-acoustics-mumbai",
+  "version": "1.0.0",
+  "description": "Automated SEO publishing pipeline for UrbanAcousticsMumbai",
+  "type": "module",
+  "main": "scripts/generate-post.js",
+  "scripts": {
+    "generate": "node scripts/generate-post.js",
+    "start": "node scripts/generate-post.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.112.1",
+    "dotenv": "^16.6.1",
+    "openai": "^7.4.0"
+  }
+}
