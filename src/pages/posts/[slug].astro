@@ -1,19 +1,13 @@
 ---
+import Layout from '../../layouts/Layout.astro';
 import { supabase } from '../../lib/supabase';
-import { marked } from 'marked';
-
-// Enabled SSR so newly generated posts show up live instantly
-export const prerender = false;
 
 const { slug } = Astro.params;
 
-if (!slug) {
-  return Astro.redirect('/404');
-}
-
+// 1. Fetch current post
 const { data: post, error } = await supabase
   .from('posts')
-  .select('title, slug, content')
+  .select('*')
   .eq('slug', slug)
   .single();
 
@@ -21,61 +15,90 @@ if (error || !post) {
   return Astro.redirect('/404');
 }
 
-// Convert markdown string to HTML tags
-const htmlContent = marked.parse(post.content || '');
+// 2. Fetch 3 related posts for internal cross-linking
+const { data: relatedPosts } = await supabase
+  .from('posts')
+  .select('title, slug')
+  .neq('slug', slug)
+  .limit(3);
+
+// 3. Construct Article Schema
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": post.title,
+  "description": post.meta_description || post.excerpt || post.title,
+  "author": {
+    "@type": "Organization",
+    "name": "Urban Acoustics Mumbai"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Urban Acoustics Mumbai",
+    "url": "https://urban-acoustics-mumbai.vercel.app"
+  },
+  "datePublished": post.created_at
+};
+
+// 4. Construct FAQ Schema (if FAQs exist in post JSON data)
+let faqSchema = null;
+if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
+  faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": post.faqs.map((faq: { question: string; answer: string }) => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+}
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{post.title} | Urban Acoustics</title>
-    <style>
-      .content h1 { font-size: 2rem; font-weight: 800; margin-top: 1.5rem; margin-bottom: 1rem; }
-      .content h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; color: #111827; }
-      .content p { margin-bottom: 1.25rem; color: #374151; line-height: 1.7; font-size: 1.05rem; }
-      .content ul { margin-bottom: 1.25rem; padding-left: 1.5rem; }
-      .content li { margin-bottom: 0.5rem; color: #374151; }
-      .content a { color: #2563eb; font-weight: 600; text-decoration: underline; }
-      
-      /* :global() bypasses Astro scoping for dynamic set:html images */
-      .content :global(img) {
-        width: 100% !important;
-        max-width: 100% !important;
-        max-height: 380px !important;
-        object-fit: cover !important;
-        border-radius: 8px !important;
-        margin: 0 0 1.5rem 0 !important;
-        display: block !important;
-      }
-    </style>
-  </head>
-  <body style="max-width: 800px; margin: 0 auto; padding: 2rem; font-family: system-ui, sans-serif; background-color: #f9fafb; color: #111827;">
-    <a href="/" style="color: #2563eb; text-decoration: none; font-weight: 600;">&larr; Back to Home</a>
+<Layout title={post.title} description={post.meta_description}>
+  <!-- Inject Structured Data Schemas -->
+  <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+  {faqSchema && (
+    <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  )}
 
-    <main style="margin-top: 2rem; background: #ffffff; padding: 2.5rem; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+  <main style="max-width: 800px; margin: 0 auto; padding: 2rem 1rem;">
+    <article>
+      <h1 style="font-size: 2.25rem; font-weight: 700; margin-bottom: 1.5rem;">{post.title}</h1>
       
-      <!-- Article Content -->
-      <article class="content" set:html={htmlContent} />
+      {post.hero_image && (
+        <img 
+          src={post.hero_image} 
+          alt={post.title} 
+          style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
+        />
+      )}
 
-      <!-- Fixed Call-To-Action (CTA) Box -->
-      <section style="margin-top: 3rem; padding: 2rem; background-color: #eff6ff; border: 2px solid #bfdbfe; border-radius: 10px; text-align: center;">
-        <h3 style="font-size: 1.35rem; font-weight: 700; color: #1e40af; margin-top: 0; margin-bottom: 0.5rem;">
-          Want Personalized Guitar Coaching at Home?
-        </h3>
-        <p style="color: #1e3a8a; margin-bottom: 1.25rem;">
-          Learn from expert tutors across Mumbai with tailored 1-on-1 doorstep sessions.
-        </p>
-        <a 
-          href="https://guitar-classes-in-mumbai.vercel.app/" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          style="display: inline-block; background-color: #2563eb; color: #ffffff; font-weight: 700; padding: 0.85rem 1.75rem; border-radius: 6px; text-decoration: none;"
-        >
-          Book Your Doorstep Masterclass &rarr;
-        </a>
+      <div class="content" set:html={post.content} />
+    </article>
+
+    <!-- Dynamic Internal Cross-Linking Block -->
+    {relatedPosts && relatedPosts.length > 0 && (
+      <section style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem;">
+          Related Local Guides in Mumbai
+        </h2>
+        <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.75rem;">
+          {relatedPosts.map((related) => (
+            <li>
+              <a 
+                href={`/posts/${related.slug}`} 
+                style="color: #2563eb; text-decoration: underline; font-weight: 500;"
+              >
+                {related.title}
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
-
-    </main>
-  </body>
-</html>
+    )}
+  </main>
+</Layout>
