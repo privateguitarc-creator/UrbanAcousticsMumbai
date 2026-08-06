@@ -1,28 +1,28 @@
-name: Auto Publish Local SEO Articles
+name: 4-Hour Programmatic Content Publisher
 
 on:
   schedule:
-    # Runs 5 times a day
-    - cron: '0 4,8,12,16,20 * * *'
+    - cron: '0 */4 * * *' # Triggers every 4 hours
   workflow_dispatch:
 
 jobs:
-  publish:
+  publish-locality-guide:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Generate and Insert Article
+      - name: Execute single premium post generation
         env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: node scripts/generate-posts.mjs
+        run: node scripts/generate.js
