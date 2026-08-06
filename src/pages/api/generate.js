@@ -63,6 +63,7 @@ export async function GET() {
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
     }
 
+   // 6. Insert Post into Supabase
     const { data: insertedPost, error: insertError } = await supabase
       .from('posts')
       .insert([
@@ -71,13 +72,14 @@ export async function GET() {
           slug: uniqueSlug,
           summary: generated.excerpt || generated.summary || '',
           content: fullContent,
+          post_type: 'guide', // <--- ADD THIS FIELD
           location_id: randomLoc.id,
           author_id: randomAuthor ? randomAuthor.id : null,
           published_at: new Date().toISOString()
         }
       ])
       .select();
-
+      
     if (insertError) {
       throw new Error(`Supabase Insert Failed: ${insertError.message}`);
     }
