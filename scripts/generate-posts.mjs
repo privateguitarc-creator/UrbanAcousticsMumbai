@@ -2,14 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 import Groq from '@groq/sdk';
 import 'dotenv/config';
 
-const supabase = createClient(
-  process.env.PUBLIC_SUPABASE_URL,
-  process.env.PUBLIC_SUPABASE_ANON_KEY
-);
+// Reads either PUBLIC_ or standard Supabase secret names
+const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const supabase = createClient(supabaseUrl, process.env.PUBLIC_SUPABASE_ANON_KEY || supabaseKey);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// List of target Mumbai neighborhoods to generate guides for
+// List of target localities in Mumbai
 const localities = [
   'Bandra West',
   'Juhu',
@@ -17,11 +17,23 @@ const localities = [
   'Dadar West',
   'Thane West',
   'Goregaon East',
-  'Worli'
+  'Worli',
+  'Malad West',
+  'Chembur',
+  'Vashi'
+];
+
+// High-resolution royalty-free guitar images
+const guitarImages = [
+  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1564186763535-ebb21ef5277f?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?auto=format&fit=crop&w=1200&q=80'
 ];
 
 async function generateArticle(locality) {
-  console.log(`Generating article for: ${locality}...`);
+  console.log(`Generating article with image for: ${locality}...`);
 
   const prompt = `
 Write a comprehensive, SEO-optimized guide titled "Top 3 Options for Learning Guitar in ${locality} (2026 Guide)".
@@ -40,7 +52,13 @@ Format the output strictly in Markdown with these guidelines:
     model: 'llama-3.3-70b-versatile',
   });
 
-  const content = chatCompletion.choices[0]?.message?.content || '';
+  const rawMarkdown = chatCompletion.choices[0]?.message?.content || '';
+  
+  // Attach a random guitar image to the top of the article
+  const randomImage = guitarImages[Math.floor(Math.random() * guitarImages.length)];
+  const imageHeader = `![Guitar Classes in ${locality}](${randomImage})\n\n`;
+  const content = imageHeader + rawMarkdown;
+
   const title = `Top 3 Options for Learning Guitar in ${locality} (2026 Guide)`;
   const slug = title
     .toLowerCase()
@@ -51,24 +69,23 @@ Format the output strictly in Markdown with these guidelines:
 }
 
 async function run() {
-  for (const locality of localities) {
-    try {
-      const post = await generateArticle(locality);
+  const locality = localities[Math.floor(Math.random() * localities.length)];
+  
+  try {
+    const post = await generateArticle(locality);
 
-      const { data, error } = await supabase
-        .from('posts')
-        .insert([{ title: post.title, slug: post.slug, content: post.content }]);
+    const { error } = await supabase
+      .from('posts')
+      .insert([{ title: post.title, slug: post.slug, content: post.content }]);
 
-      if (error) {
-        console.error(`Error inserting ${locality}:`, error.message);
-      } else {
-        console.log(`Successfully published: ${post.title}`);
-      }
-    } catch (err) {
-      console.error(`Failed to generate for ${locality}:`, err);
+    if (error) {
+      console.error(`Error inserting ${locality}:`, error.message);
+    } else {
+      console.log(`Successfully published: ${post.title}`);
     }
+  } catch (err) {
+    console.error(`Failed generation for ${locality}:`, err);
   }
-  console.log('\nBatch generation complete!');
 }
 
 run();
