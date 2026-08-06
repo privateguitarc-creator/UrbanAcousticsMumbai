@@ -1,18 +1,18 @@
 import type { APIRoute } from 'astro';
 
-const SITE_URL = 'https://urban-acoustics-mumbai.vercel.app';
-
-const robotsTxt = `
-User-agent: *
-Allow: /
-
-Sitemap: ${SITE_URL}/sitemap.xml
-`.trim();
+export const prerender = false;
 
 export const GET: APIRoute = () => {
-  return new Response(robotsTxt, {
+  const robots = `User-agent: *
+Allow: /
+
+Sitemap: https://urban-acoustics-mumbai.vercel.app/sitemap.xml`;
+
+  return new Response(robots, {
+    status: 200,
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Type': 'text/plain',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
     },
   });
 };
