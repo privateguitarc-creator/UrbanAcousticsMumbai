@@ -10,9 +10,7 @@ export const GET: APIRoute = async () => {
     .from('posts')
     .select('slug, created_at');
 
-  if (error) {
-    console.error('Sitemap fetch error:', error);
-  }
+  const debugComment = `<!-- Supabase Debug -> Posts found: ${posts?.length ?? 0} | Error: ${JSON.stringify(error)} -->`;
 
   const urls = (posts || [])
     .map(
@@ -27,6 +25,7 @@ export const GET: APIRoute = async () => {
     .join('');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
+${debugComment}
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${SITE_URL}/</loc>
@@ -39,7 +38,7 @@ export const GET: APIRoute = async () => {
     status: 200,
     headers: {
       'Content-Type': 'application/xml',
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     },
   });
 };
