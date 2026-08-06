@@ -1,12 +1,14 @@
+process.loadEnvFile();
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
 import 'dotenv/config';
 
 // Reads either PUBLIC_ or standard Supabase secret names
 const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
 
-const supabase = createClient(supabaseUrl, process.env.PUBLIC_SUPABASE_ANON_KEY || supabaseKey);
+// Create Supabase client using the service role key to bypass RLS
+const supabase = createClient(supabaseUrl, supabaseKey);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // List of target localities in Mumbai
@@ -24,12 +26,13 @@ const localities = [
 ];
 
 // High-resolution royalty-free guitar images
+// High-resolution royalty-free landscape guitar banners
 const guitarImages = [
-  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1564186763535-ebb21ef5277f?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?auto=format&fit=crop&w=1200&q=80'
+  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1564186763535-ebb21ef5277f?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&h=630&q=80',
+  'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?auto=format&fit=crop&w=1200&h=630&q=80'
 ];
 
 async function generateArticle(locality) {
@@ -76,7 +79,13 @@ async function run() {
 
     const { error } = await supabase
       .from('posts')
-      .insert([{ title: post.title, slug: post.slug, content: post.content }]);
+      .insert([{ 
+        title: post.title, 
+        slug: post.slug, 
+        content: post.content,
+        post_type: 'article',
+        anchor_type: 'satellite'
+      }]);
 
     if (error) {
       console.error(`Error inserting ${locality}:`, error.message);

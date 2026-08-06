@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "description": "Automated SEO publishing pipeline for UrbanAcousticsMumbai",
   "type": "module",
-  "main": "scripts/generate-post.js",
+  "main": "scripts/generate-posts.mjs",
   "scripts": {
-    "generate": "node scripts/generate-post.js",
-    "start": "node scripts/generate-post.js"
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "generate": "node scripts/generate-posts.mjs"
   },
   "dependencies": {
     "@astrojs/vercel": "^11.0.5",
