@@ -9,9 +9,12 @@
     "start": "node scripts/generate-post.js"
   },
   "dependencies": {
+    "@astrojs/vercel": "^11.0.5",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.112.1",
+    "astro": "^7.1.6",
     "dotenv": "^16.6.1",
+    "marked": "^18.0.9",
     "openai": "^7.4.0"
   }
 }
