@@ -23,17 +23,7 @@ const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1471478331149-c72582b7c517?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1541689592655-f5f52825a3b8?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1525994886773-080587e161c2?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1510915228340-29c85a43dcfe?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1485579149621-3123dd979885?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1508215885820-4585e56135c8?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1549298240-0d8e60513026?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1513883049090-d0b7439799bf?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1561777848-6a56e08d6a26?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?q=80&w=1200&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?q=80&w=1200&auto=format&fit=crop'
 ];
 
 export async function GET() {
@@ -130,9 +120,6 @@ Return STRICTLY a raw JSON object with keys:
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
     }
 
-    // Escape special regex characters in location names (e.g. Bandra West - Bandstand)
-    const escapedLoc = randomLoc.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
     // AUTOMATIC MULTI-KEYWORD LINK INJECTION
     const autoLinkRules = [
       { pattern: /\b1-on-1 doorstep home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 doorstep home tutors](${TARGET_URL})` },
@@ -140,23 +127,19 @@ Return STRICTLY a raw JSON object with keys:
       { pattern: /\bFurtados\b(?![^\[]*\])/g, replacement: `[Furtados](${TARGET_URL})` },
       { pattern: /\bBajaao\b(?![^\[]*\])/g, replacement: `[Bajaao](${TARGET_URL})` },
       { pattern: /\blocal luthiers\b(?![^\[]*\])/gi, replacement: `[local luthiers](${TARGET_URL})` },
-      { pattern: new RegExp(`\\bguitar classes in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` }
+      { pattern: new RegExp(`\\bguitar classes in ${randomLoc.name}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` }
     ];
 
     autoLinkRules.forEach(({ pattern, replacement }) => {
       articleBody = articleBody.replace(pattern, replacement);
     });
 
-    // Bulletproof fail-safe link injection: guarantees target backlink exists
+    // Fail-safe link injection: guarantees at least one anchor link exists
     if (!articleBody.includes('guitar-classes-in-mumbai.vercel.app')) {
-      if (/guitar classes/i.test(articleBody)) {
-        articleBody = articleBody.replace(
-          /guitar classes/i,
-          `[Guitar Classes in Mumbai](${TARGET_URL})`
-        );
-      } else {
-        articleBody += `\n\nFor more details on enrollment and home lessons, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
-      }
+      articleBody = articleBody.replace(
+        /guitar classes/i,
+        `[Guitar Classes in Mumbai](${TARGET_URL})`
+      );
     }
 
     const { data: insertedPost, error: insertError } = await supabase
