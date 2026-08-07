@@ -1,4 +1,6 @@
 ---
+export const prerender = false;
+
 import { supabase } from '../../lib/supabase';
 import { marked } from 'marked';
 
@@ -22,15 +24,19 @@ const { data: relatedPosts } = await supabase
   .neq('slug', slug)
   .limit(3);
 
-// 3. Convert Markdown string to HTML
+// 3. Convert Markdown string to HTML using marked
 const htmlContent = post.content ? marked.parse(post.content) : '';
 
-// 4. Construct Article Schema
+// 4. Fallback for Hero Image (supports both column names in DB)
+const displayImage = post.hero_image || post.featured_image || null;
+
+// 5. Construct Article Schema
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "Article",
   "headline": post.title,
-  "description": post.meta_description || post.title,
+  "description": post.summary || post.meta_description || post.title,
+  "image": displayImage ? [displayImage] : [],
   "author": {
     "@type": "Organization",
     "name": "Urban Acoustics Mumbai"
@@ -42,7 +48,7 @@ const articleSchema = {
   }
 };
 
-// 5. Construct FAQ Schema
+// 6. Construct FAQ Schema
 let faqSchema = null;
 if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
   faqSchema = {
@@ -65,7 +71,7 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{post.title} | Urban Acoustics Mumbai</title>
-    <meta name="description" content={post.meta_description || post.title} />
+    <meta name="description" content={post.summary || post.meta_description || post.title} />
 
     <!-- Structured Data -->
     <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
@@ -83,9 +89,9 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
       <article>
         <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.2;">{post.title}</h1>
         
-        {post.hero_image && (
+        {displayImage && (
           <img 
-            src={post.hero_image} 
+            src={displayImage} 
             alt={post.title} 
             style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
           />

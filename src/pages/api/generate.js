@@ -3,7 +3,6 @@ export const prerender = false;
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
 
-// Clean, verified Unsplash guitar/music photo pool
 const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?q=80&w=1200&auto=format&fit=crop',
@@ -63,9 +62,13 @@ export async function GET() {
       );
     }
 
-    // Select an unused clean image from the pool
-    const { data: allPosts } = await supabase.from('posts').select('featured_image');
-    const usedImages = new Set((allPosts || []).map((p) => p.featured_image).filter(Boolean));
+    // Select an unused image from the pool
+    const { data: allPosts } = await supabase.from('posts').select('featured_image, hero_image');
+    const usedImages = new Set(
+      (allPosts || [])
+        .flatMap((p) => [p.featured_image, p.hero_image])
+        .filter(Boolean)
+    );
     const availableImages = GUITAR_HERO_IMAGES.filter((img) => !usedImages.has(img));
 
     const selectedImage = availableImages.length > 0
@@ -89,9 +92,6 @@ Structuring Requirements:
   4. How to Choose Between 1-on-1 Home Tutors and Music Academies.
   5. 5-Step Learning Roadmap for Beginners in 2026.
   6. Where to Buy & Maintain Guitars Near ${randomLoc.name} (Mention stores like Furtados, Bajaao, and local luthiers).
-
-LINKING REQUIREMENTS:
-- Link to ${TARGET_URL} using keywords like "Guitar Classes in Mumbai", "best guitar classes in ${randomLoc.name}", "doorstep tutor", "Furtados", and "Bajaao".
 
 Return STRICTLY a raw JSON object with keys:
 "title": "SEO Title",
@@ -120,15 +120,12 @@ Return STRICTLY a raw JSON object with keys:
 
     let articleBody = generated.content || '';
 
-    // Build full content with header image
-    let fullContent = `![Guitar Learning in ${randomLoc.name}](${selectedImage})\n\n` + articleBody;
-
     if (Array.isArray(generated.faqs) && generated.faqs.length > 0) {
-      fullContent += '\n\n## Frequently Asked Questions\n\n' +
+      articleBody += '\n\n## Frequently Asked Questions\n\n' +
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
     }
 
-    // AUTOMATIC LINK INJECTION: Hyperlink Furtados, Bajaao, and store/tutor terms across body and FAQs
+    // AUTOMATIC LINK INJECTION: Hyperlink store and brand mentions
     const autoLinkRules = [
       { pattern: /\bFurtados\b(?![^\[]*\])/g, replacement: `[Furtados](${TARGET_URL})` },
       { pattern: /\bBajaao\b(?![^\[]*\])/g, replacement: `[Bajaao](${TARGET_URL})` },
@@ -136,14 +133,14 @@ Return STRICTLY a raw JSON object with keys:
     ];
 
     autoLinkRules.forEach(({ pattern, replacement }) => {
-      fullContent = fullContent.replace(pattern, replacement);
+      articleBody = articleBody.replace(pattern, replacement);
     });
 
-    // Fail-safe main link injection
-    if (!fullContent.includes('guitar-classes-in-mumbai.vercel.app')) {
-      fullContent += `\n\nFor more details on enrollment and home lessons, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
+    if (!articleBody.includes('guitar-classes-in-mumbai.vercel.app')) {
+      articleBody += `\n\nFor more details on enrollment and home lessons, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
     }
 
+    // Populate BOTH featured_image AND hero_image so any front-end reference works
     const { data: insertedPost, error: insertError } = await supabase
       .from('posts')
       .insert([
@@ -151,8 +148,10 @@ Return STRICTLY a raw JSON object with keys:
           title: generated.title,
           slug: uniqueSlug,
           summary: generated.excerpt || generated.summary || '',
-          content: fullContent,
+          content: articleBody,
           featured_image: selectedImage,
+          hero_image: selectedImage,
+          faqs: generated.faqs || [],
           post_type: 'guide',
           anchor_type: 'location',
           location_id: randomLoc.id,
