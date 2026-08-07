@@ -3,13 +3,23 @@ export const prerender = false;
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
 
+// Expanded image pool for high-res hero banners
 const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1564186763535-ebb21ef5277f?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1462965326201-d02e4f455804?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?q=80&w=1200&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1445985543470-41fba5c3144a?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1513829596324-4bb2800c5efb?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1558098329-a11cff621064?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1507838153414-b4b713384a76?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1568283096533-0dd839c36267?q=80&w=1200&auto=format&fit=crop'
 ];
 
 export async function GET() {
@@ -43,9 +53,30 @@ export async function GET() {
       );
     }
 
+    // Deduplication check: fetch last 10 used images to prevent repeats
+    const { data: recentPosts } = await supabase
+      .from('posts')
+      .select('featured_image')
+      .order('published_at', { ascending: false })
+      .limit(10);
+
+    const usedImages = new Set((recentPosts || []).map((p) => p.featured_image).filter(Boolean));
+    const availableImages = GUITAR_HERO_IMAGES.filter((img) => !usedImages.has(img));
+
+    const selectedImage =
+      availableImages.length > 0
+        ? availableImages[Math.floor(Math.random() * availableImages.length)]
+        : GUITAR_HERO_IMAGES[Math.floor(Math.random() * GUITAR_HERO_IMAGES.length)];
+
+    if (!selectedImage) {
+      return new Response(
+        JSON.stringify({ error: 'Article creation stopped: No valid image available.' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const randomLoc = locations[Math.floor(Math.random() * locations.length)];
     const randomAuthor = authors && authors.length > 0 ? authors[Math.floor(Math.random() * authors.length)] : null;
-    const selectedImage = GUITAR_HERO_IMAGES[Math.floor(Math.random() * GUITAR_HERO_IMAGES.length)];
 
     const prompt = `You are an expert music instructor and SEO strategist for "Guitar Classes in Mumbai".
 Write an extensive, highly engaging, localized SEO guide (800 to 1000 words) for learning guitar in ${randomLoc.name}, Mumbai for 2026.
@@ -58,11 +89,12 @@ Structuring Requirements:
   3. Fee Breakdown & Cost Expectation in ${randomLoc.name} (per month / per session).
   4. How to Choose Between 1-on-1 Home Tutors and Music Academies.
   5. 5-Step Learning Roadmap for Beginners in 2026.
-  6. Where to Buy & Maintain Guitars Near ${randomLoc.name}.
-- Interlink seamlessly using Markdown to target website:
-  - Link to main domain: [Guitar Classes in Mumbai](https://guitar-classes-in-mumbai.vercel.app/)
-  - Link to doorstep tutoring: [1-on-1 Doorstep Guitar Masterclasses](https://guitar-classes-in-mumbai.vercel.app/)
-- Ensure targeted local search phrases appear naturally (e.g. "best guitar classes in ${randomLoc.name}", "guitar teacher near ${randomLoc.name} Mumbai").
+  6. Where to Buy & Maintain Guitars Near ${randomLoc.name} (Mention authentic local stores like Furtados, Bajaao, and local luthiers).
+
+Linking & Anchor Rules (CRITICAL):
+- ALL links must point strictly to target domain: https://guitar-classes-in-mumbai.vercel.app/
+- Use the exact anchor text "[Guitar Classes in Mumbai](https://guitar-classes-in-mumbai.vercel.app/)" EXACTLY ONCE in the article.
+- Add 2-3 additional links to https://guitar-classes-in-mumbai.vercel.app/ using natural, dynamic anchor phrases (e.g., "[best guitar classes in ${randomLoc.name}](https://guitar-classes-in-mumbai.vercel.app/)", "[doorstep guitar tutor near ${randomLoc.name}](https://guitar-classes-in-mumbai.vercel.app/)", "[1-on-1 personalized lessons](https://guitar-classes-in-mumbai.vercel.app/)").
 
 Return STRICTLY a raw JSON object with keys:
 "title": "SEO Title",
@@ -90,7 +122,7 @@ Return STRICTLY a raw JSON object with keys:
     const uniqueSlug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     let fullContent = `![Guitar Learning in ${randomLoc.name}](${selectedImage})\n\n` + (generated.content || '');
-    
+
     if (Array.isArray(generated.faqs) && generated.faqs.length > 0) {
       fullContent += '\n\n## Frequently Asked Questions\n\n' +
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');

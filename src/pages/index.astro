@@ -5,9 +5,9 @@ const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Fetch posts ordered by latest publication date descending
+// Order by published_at descending so new posts always appear at index 0
 const { data: posts } = await supabase
   .from('posts')
   .select('*')
-  .order('published_at', { ascending: false }); // <--- Order newest posts to top
+  .order('published_at', { ascending: false });
 ---
