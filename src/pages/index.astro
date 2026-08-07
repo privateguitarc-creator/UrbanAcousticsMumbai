@@ -1,13 +1,41 @@
 ---
+// FORCE SSR: Prevents Astro from caching old static lists
+export const prerender = false;
+
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
+const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Order by published_at descending so new posts always appear at index 0
+// Fetch posts ordered by published_at DESCENDING (Newest first)
 const { data: posts } = await supabase
   .from('posts')
   .select('*')
   .order('published_at', { ascending: false });
 ---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>All Mumbai Location Guides</title>
+  </head>
+  <body class="bg-gray-50 min-h-screen py-12 px-4">
+    <div class="max-w-4xl mx-auto">
+      <a href="/" class="text-sm text-blue-600 hover:underline">← Home</a>
+      <h1 class="text-3xl font-bold text-gray-900 mt-2 mb-1">All Mumbai Location Guides</h1>
+      <p class="text-gray-600 text-sm mb-8">Browse our full directory of localized guitar coaching and academy guides across Mumbai.</p>
+
+      <div class="space-y-4">
+        {posts && posts.map((post) => (
+          <a
+            href={`/posts/${post.slug}`}
+            class="block p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:border-blue-500 transition-colors"
+          >
+            <h2 class="text-base font-semibold text-blue-600">{post.title}</h2>
+          </a>
+        ))}
+      </div>
+    </div>
+  </body>
+</html>
