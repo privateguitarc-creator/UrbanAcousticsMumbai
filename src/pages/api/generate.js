@@ -57,7 +57,6 @@ export async function GET() {
       );
     }
 
-    // Select an unused image
     const { data: allPosts } = await supabase.from('posts').select('featured_image');
     const usedImages = new Set(
       (allPosts || []).map((p) => p.featured_image).filter(Boolean)
@@ -113,7 +112,6 @@ Return STRICTLY a raw JSON object with keys:
 
     let articleBody = generated.content || '';
 
-    // Append FAQs into markdown content body
     if (Array.isArray(generated.faqs) && generated.faqs.length > 0) {
       articleBody += '\n\n## Frequently Asked Questions\n\n' +
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
@@ -121,19 +119,21 @@ Return STRICTLY a raw JSON object with keys:
 
     const escapedLoc = randomLoc.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+    // ONLY TARGET SERVICE KEYWORDS FOR INTERNAL LINKS
     const autoLinkRules = [
       { pattern: /\b1-on-1 doorstep home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 doorstep home tutors](${TARGET_URL})` },
       { pattern: /\bdoorstep home tutors\b(?![^\[]*\])/gi, replacement: `[doorstep home tutors](${TARGET_URL})` },
-      { pattern: /\bFurtados\b(?![^\[]*\])/g, replacement: `[Furtados](${TARGET_URL})` },
-      { pattern: /\bBajaao\b(?![^\[]*\])/g, replacement: `[Bajaao](${TARGET_URL})` },
-      { pattern: /\blocal luthiers\b(?![^\[]*\])/gi, replacement: `[local luthiers](${TARGET_URL})` },
-      { pattern: new RegExp(`\\bguitar classes in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` }
+      { pattern: /\b1-on-1 home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 home tutors](${TARGET_URL})` },
+      { pattern: new RegExp(`\\bguitar classes in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` },
+      { pattern: /\bguitar classes in Mumbai\b(?![^\[]*\])/gi, replacement: `[guitar classes in Mumbai](${TARGET_URL})` },
+      { pattern: new RegExp(`\\blearn guitar in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[learn guitar in ${randomLoc.name}](${TARGET_URL})` }
     ];
 
     autoLinkRules.forEach(({ pattern, replacement }) => {
       articleBody = articleBody.replace(pattern, replacement);
     });
 
+    // Fail-safe backlink check
     if (!articleBody.includes('guitar-classes-in-mumbai.vercel.app')) {
       if (/guitar classes/i.test(articleBody)) {
         articleBody = articleBody.replace(/guitar classes/i, `[Guitar Classes in Mumbai](${TARGET_URL})`);
