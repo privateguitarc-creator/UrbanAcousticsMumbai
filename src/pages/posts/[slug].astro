@@ -24,11 +24,13 @@ const { data: relatedPosts } = await supabase
   .neq('slug', slug)
   .limit(3);
 
-// 3. Convert Markdown string to HTML using marked
-const htmlContent = post.content ? marked.parse(post.content) : '';
+// 3. Fail-safe Default Image: Ensures an image ALWAYS renders even if DB row is null
+const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop';
+const displayImage = post.hero_image || post.featured_image || DEFAULT_HERO_IMAGE;
 
-// 4. Fallback for Hero Image (supports both column names in DB)
-const displayImage = post.hero_image || post.featured_image || null;
+// 4. Clean content: Strip embedded Markdown images (![alt](url)) to prevent duplicates, then parse
+const cleanContent = post.content ? post.content.replace(/!\[.*?\]\(.*?\)/g, '').trim() : '';
+const htmlContent = cleanContent ? marked.parse(cleanContent) : '';
 
 // 5. Construct Article Schema
 const articleSchema = {
@@ -36,7 +38,7 @@ const articleSchema = {
   "@type": "Article",
   "headline": post.title,
   "description": post.summary || post.meta_description || post.title,
-  "image": displayImage ? [displayImage] : [],
+  "image": [displayImage],
   "author": {
     "@type": "Organization",
     "name": "Urban Acoustics Mumbai"
@@ -89,13 +91,11 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
       <article>
         <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.2;">{post.title}</h1>
         
-        {displayImage && (
-          <img 
-            src={displayImage} 
-            alt={post.title} 
-            style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
-          />
-        )}
+        <img 
+          src={displayImage} 
+          alt={post.title} 
+          style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
+        />
 
         <!-- Rendered HTML Content -->
         <div class="content" set:html={htmlContent} />
@@ -175,6 +175,20 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
       .content a {
         color: #2563eb;
         text-decoration: underline;
+      }
+      .content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+      }
+      .content th, .content td {
+        border: 1px solid #e5e7eb;
+        padding: 0.75rem;
+        text-align: left;
+      }
+      .content th {
+        background-color: #f3f4f6;
+        font-weight: 600;
       }
     </style>
 

@@ -1,109 +1,180 @@
-import Groq from 'groq-sdk';
+export const prerender = false;
+
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
+import Groq from 'groq-sdk';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-// Fallback logic to support both GitHub Actions secrets and local/Vercel .env
-const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-const guitarImages = [
+const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1564186763535-ebb21ef5277f?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1462965326201-d02e4f455804?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1445985543470-41fba5c3144a?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1513829596324-4bb2800c5efb?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1558098329-a11cff621064?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1507838153414-b4b713384a76?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1568283096533-0dd839c36267?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1516924962500-2b4b3b99ea02?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1471478331149-c72582b7c517?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1541689592655-f5f52825a3b8?q=80&w=1200&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?q=80&w=1200&auto=format&fit=crop'
 ];
 
-// Target Localities Queue
-const targetLocalities = [
-  'Bandra West', 'Andheri East', 'Powai', 'Juhu', 'Dadar', 
-  'Goregaon East', 'Borivali West', 'Lower Parel', 'Thane West', 'Chembur',
-  'Khar West', 'Santacruz', 'Malad West', 'Vile Parle', 'Worli',
-  'Navi Mumbai', 'Ghatkopar', 'Mulund', 'Colaba', 'Prabhadevi'
-];
-
-function generateSlug(title) {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9 -]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-') + `-${Math.floor(1000 + Math.random() * 9000)}`;
-}
-
-async function getNextUnpublishedLocality() {
-  const { data: existingPosts } = await supabase.from('posts').select('slug');
-  const existingSlugs = (existingPosts || []).map((p) => p.slug);
-
-  for (const loc of targetLocalities) {
-    const testSlugBase = `best-guitar-classes-in-${loc.toLowerCase().replace(/\s+/g, '-')}-mumbai`;
-    const isAlreadyPublished = existingSlugs.some((s) => s.startsWith(testSlugBase));
-    if (!isAlreadyPublished) {
-      return loc;
-    }
-  }
-  // Fallback to random locality if all initial queued localities are already generated
-  return targetLocalities[Math.floor(Math.random() * targetLocalities.length)];
-}
-
-async function generatePremiumPost() {
-  const locality = await getNextUnpublishedLocality();
-  console.log(`Starting generation for locality: ${locality}`);
-
-  const prompt = `You are a professional music educator and local Mumbai music journalist. Write an exhaustive, highly engaging, premium 1200+ word guide on learning guitar in ${locality}, Mumbai.
-
-Requirements for Search Engine Ranking:
-1. Title: Create an enticing, high-CTR main H1 header.
-2. Structure:
-   - Detailed introduction on music culture in ${locality} with specific local landmarks or transit references.
-   - Comprehensive comparison between 1-on-1 Doorstep Home Tutors vs local academies in ${locality}. Include a markdown comparison table covering Fees, Flexibility, and Personalized Feedback.
-   - Realistic Fee Structure in INR for ${locality} (Beginner vs Intermediate levels).
-   - Recommended 4-Week Acoustic Guitar Starter Roadmap for adults and kids.
-   - 4-5 Frequently Asked Questions (FAQ section) with direct answers.
-3. Tone: Authoritative, helpful, warm, and hyper-local to Mumbai. Avoid repetitive fluff; focus on actionable insights.`;
-
+export async function GET() {
   try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: 'You create expert-level, authoritative local educational content formatted in clean Markdown.' },
-        { role: 'user', content: prompt }
-      ],
+    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
+    const supabaseKey =
+      import.meta.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      import.meta.env.PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.PUBLIC_SUPABASE_ANON_KEY;
+    const groqKey = import.meta.env.GROQ_API_KEY || process.env.GROQ_API_KEY;
+
+    if (!supabaseUrl || !supabaseKey || !groqKey) {
+      return new Response(
+        JSON.stringify({ error: 'Missing environment variables.' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const groq = new Groq({ apiKey: groqKey });
+
+    const { data: locations, error: locError } = await supabase.from('locations').select('*');
+    const { data: authors } = await supabase.from('authors').select('*');
+
+    if (locError) throw new Error(`Failed to fetch locations: ${locError.message}`);
+    if (!locations || locations.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No locations found in database.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Select an unused image from the pool
+    const { data: allPosts } = await supabase.from('posts').select('featured_image, hero_image');
+    const usedImages = new Set(
+      (allPosts || [])
+        .flatMap((p) => [p.featured_image, p.hero_image])
+        .filter(Boolean)
+    );
+    const availableImages = GUITAR_HERO_IMAGES.filter((img) => !usedImages.has(img));
+
+    const selectedImage = availableImages.length > 0
+      ? availableImages[Math.floor(Math.random() * availableImages.length)]
+      : GUITAR_HERO_IMAGES[Math.floor(Math.random() * GUITAR_HERO_IMAGES.length)];
+
+    const randomLoc = locations[Math.floor(Math.random() * locations.length)];
+    const randomAuthor = authors && authors.length > 0 ? authors[Math.floor(Math.random() * authors.length)] : null;
+
+    const TARGET_URL = 'https://guitar-classes-in-mumbai.vercel.app/';
+
+    const prompt = `You are an expert music instructor and SEO strategist for "Guitar Classes in Mumbai".
+Write an extensive, highly engaging, localized SEO guide (800 to 1000 words) for learning guitar in ${randomLoc.name}, Mumbai for 2026.
+
+Structuring Requirements:
+- Use clear Markdown formatting with ## H2 and ### H3 headings.
+- Include a complete 2026 guide containing:
+  1. Introduction to the local music culture and guitar scene in ${randomLoc.name}, Mumbai.
+  2. Types of Lessons Available (Acoustic, Electric, Classical, Fingerstyle).
+  3. Fee Breakdown & Cost Expectation in ${randomLoc.name} (per month / per session).
+  4. How to Choose Between 1-on-1 Home Tutors and Music Academies.
+  5. 5-Step Learning Roadmap for Beginners in 2026.
+  6. Where to Buy & Maintain Guitars Near ${randomLoc.name} (Mention stores like Furtados, Bajaao, and local luthiers).
+
+Return STRICTLY a raw JSON object with keys:
+"title": "SEO Title",
+"slug": "url-friendly-slug",
+"excerpt": "Compelling 2-sentence search snippet",
+"content": "Full markdown body of 800-1000 words",
+"faqs": [{"question": "...", "answer": "..."}]`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.6,
+      max_tokens: 4000,
+      response_format: { type: 'json_object' }
     });
 
-    const rawMarkdown = chatCompletion.choices[0]?.message?.content || '';
-    const selectedImage = guitarImages[Math.floor(Math.random() * guitarImages.length)];
-    
-    // Attach hero image at top of Markdown content
-    const content = `![Guitar Coaching in ${locality}](${selectedImage})\n\n${rawMarkdown}`;
-    const title = `Best Guitar Classes in ${locality}, Mumbai: 2026 Complete Guide`;
-    const slug = generateSlug(`best-guitar-classes-in-${locality}-mumbai`);
+    let rawContent = completion.choices[0]?.message?.content || '{}';
+    rawContent = rawContent.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
-    const { error } = await supabase
+    const generated = JSON.parse(rawContent);
+
+    const baseSlug = (generated.slug || generated.title || 'guitar-classes')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    const uniqueSlug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    let articleBody = generated.content || '';
+
+    if (Array.isArray(generated.faqs) && generated.faqs.length > 0) {
+      articleBody += '\n\n## Frequently Asked Questions\n\n' +
+        generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
+    }
+
+    // AUTOMATIC MULTI-KEYWORD LINK INJECTION
+    const autoLinkRules = [
+      { pattern: /\b1-on-1 doorstep home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 doorstep home tutors](${TARGET_URL})` },
+      { pattern: /\bdoorstep home tutors\b(?![^\[]*\])/gi, replacement: `[doorstep home tutors](${TARGET_URL})` },
+      { pattern: /\bFurtados\b(?![^\[]*\])/g, replacement: `[Furtados](${TARGET_URL})` },
+      { pattern: /\bBajaao\b(?![^\[]*\])/g, replacement: `[Bajaao](${TARGET_URL})` },
+      { pattern: /\blocal luthiers\b(?![^\[]*\])/gi, replacement: `[local luthiers](${TARGET_URL})` },
+      { pattern: new RegExp(`\\bguitar classes in ${randomLoc.name}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` }
+    ];
+
+    autoLinkRules.forEach(({ pattern, replacement }) => {
+      articleBody = articleBody.replace(pattern, replacement);
+    });
+
+    // Fail-safe link injection: guarantees at least one anchor link exists
+    if (!articleBody.includes('guitar-classes-in-mumbai.vercel.app')) {
+      articleBody = articleBody.replace(
+        /guitar classes/i,
+        `[Guitar Classes in Mumbai](${TARGET_URL})`
+      );
+    }
+
+    const { data: insertedPost, error: insertError } = await supabase
       .from('posts')
       .insert([
-        { 
-          title, 
-          slug, 
-          content,
-          post_type: 'post',
-          anchor_type: 'local'
+        {
+          title: generated.title,
+          slug: uniqueSlug,
+          summary: generated.excerpt || generated.summary || '',
+          content: articleBody,
+          featured_image: selectedImage,
+          hero_image: selectedImage,
+          faqs: generated.faqs || [],
+          post_type: 'guide',
+          anchor_type: 'location',
+          location_id: randomLoc.id,
+          author_id: randomAuthor ? randomAuthor.id : null,
+          published_at: new Date().toISOString()
         }
-      ]);
+      ])
+      .select();
 
-    if (error) {
-      console.error(`Database insert error for ${locality}:`, error.message);
-    } else {
-      console.log(`[Success] Published premium guide for ${locality} (Slug: ${slug})`);
+    if (insertError) {
+      throw new Error(`Supabase Insert Failed: ${insertError.message}`);
     }
+
+    return new Response(JSON.stringify({ success: true, post: insertedPost[0] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
   } catch (err) {
-    console.error(`Failed generation for ${locality}:`, err.message);
+    return new Response(
+      JSON.stringify({ success: false, error: err.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
-
-generatePremiumPost();
