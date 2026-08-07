@@ -1,10 +1,14 @@
 ---
+// 1. Force SSR so newly generated database posts appear instantly on every refresh
+export const prerender = false;
+
 import { supabase } from '../lib/supabase';
 
-// Fetch all posts from Supabase
+// 2. Fetch posts strictly ordered by published_at DESCENDING (newest first)
 const { data: posts, error } = await supabase
   .from('posts')
-  .select('title, slug');
+  .select('title, slug, published_at')
+  .order('published_at', { ascending: false });
 
 if (error) {
   console.error('Error fetching posts:', error);
