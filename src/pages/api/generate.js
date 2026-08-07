@@ -62,7 +62,6 @@ export async function GET() {
       );
     }
 
-    // Select an unused image from the pool
     const { data: allPosts } = await supabase.from('posts').select('featured_image, hero_image');
     const usedImages = new Set(
       (allPosts || [])
@@ -125,11 +124,15 @@ Return STRICTLY a raw JSON object with keys:
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
     }
 
-    // AUTOMATIC LINK INJECTION: Hyperlink store and brand mentions
+    const escapedLoc = randomLoc.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     const autoLinkRules = [
+      { pattern: /\b1-on-1 doorstep home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 doorstep home tutors](${TARGET_URL})` },
+      { pattern: /\bdoorstep home tutors\b(?![^\[]*\])/gi, replacement: `[doorstep home tutors](${TARGET_URL})` },
       { pattern: /\bFurtados\b(?![^\[]*\])/g, replacement: `[Furtados](${TARGET_URL})` },
       { pattern: /\bBajaao\b(?![^\[]*\])/g, replacement: `[Bajaao](${TARGET_URL})` },
-      { pattern: /\blocal luthiers\b(?![^\[]*\])/gi, replacement: `[local luthiers](${TARGET_URL})` }
+      { pattern: /\blocal luthiers\b(?![^\[]*\])/gi, replacement: `[local luthiers](${TARGET_URL})` },
+      { pattern: new RegExp(`\\bguitar classes in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` }
     ];
 
     autoLinkRules.forEach(({ pattern, replacement }) => {
@@ -137,10 +140,13 @@ Return STRICTLY a raw JSON object with keys:
     });
 
     if (!articleBody.includes('guitar-classes-in-mumbai.vercel.app')) {
-      articleBody += `\n\nFor more details on enrollment and home lessons, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
+      if (/guitar classes/i.test(articleBody)) {
+        articleBody = articleBody.replace(/guitar classes/i, `[Guitar Classes in Mumbai](${TARGET_URL})`);
+      } else {
+        articleBody += `\n\nFor more details on enrollment and home lessons, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
+      }
     }
 
-    // Populate BOTH featured_image AND hero_image so any front-end reference works
     const { data: insertedPost, error: insertError } = await supabase
       .from('posts')
       .insert([
@@ -151,7 +157,7 @@ Return STRICTLY a raw JSON object with keys:
           content: articleBody,
           featured_image: selectedImage,
           hero_image: selectedImage,
-          faqs: generated.faqs || [],
+          faqs: generated.faqs || [], // RESTORED FAQ INSERT
           post_type: 'guide',
           anchor_type: 'location',
           location_id: randomLoc.id,

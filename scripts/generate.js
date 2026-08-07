@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
-import 'dotenv/config'; // Loads .env variables locally
+import 'dotenv/config';
 
 const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop',
@@ -50,7 +50,6 @@ async function generatePost() {
       process.exit(1);
     }
 
-    // Filter unused images
     const { data: allPosts } = await supabase.from('posts').select('featured_image, hero_image');
     const usedImages = new Set(
       (allPosts || [])
@@ -146,7 +145,6 @@ Return STRICTLY a raw JSON object with keys:
           content: articleBody,
           featured_image: selectedImage,
           hero_image: selectedImage,
-          faqs: generated.faqs || [],
           post_type: 'guide',
           anchor_type: 'location',
           location_id: randomLoc.id,
@@ -167,5 +165,4 @@ Return STRICTLY a raw JSON object with keys:
   }
 }
 
-// Run script
 generatePost();
