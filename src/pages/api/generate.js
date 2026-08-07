@@ -23,12 +23,7 @@ const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1471478331149-c72582b7c517?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?q=80&w=1200&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1541689592655-f5f52825a3b8?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1525994886773-080587e161c2?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1510915228340-29c85a43dcfe?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1485579149621-3123dd979885?q=80&w=1200&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?q=80&w=1200&auto=format&fit=crop'
+  'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?q=80&w=1200&auto=format&fit=crop'
 ];
 
 export async function GET() {
@@ -62,11 +57,10 @@ export async function GET() {
       );
     }
 
-    const { data: allPosts } = await supabase.from('posts').select('featured_image, hero_image');
+    // Select an unused image
+    const { data: allPosts } = await supabase.from('posts').select('featured_image');
     const usedImages = new Set(
-      (allPosts || [])
-        .flatMap((p) => [p.featured_image, p.hero_image])
-        .filter(Boolean)
+      (allPosts || []).map((p) => p.featured_image).filter(Boolean)
     );
     const availableImages = GUITAR_HERO_IMAGES.filter((img) => !usedImages.has(img));
 
@@ -119,6 +113,7 @@ Return STRICTLY a raw JSON object with keys:
 
     let articleBody = generated.content || '';
 
+    // Append FAQs into markdown content body
     if (Array.isArray(generated.faqs) && generated.faqs.length > 0) {
       articleBody += '\n\n## Frequently Asked Questions\n\n' +
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
@@ -156,8 +151,6 @@ Return STRICTLY a raw JSON object with keys:
           summary: generated.excerpt || generated.summary || '',
           content: articleBody,
           featured_image: selectedImage,
-          hero_image: selectedImage,
-          faqs: generated.faqs || [], // RESTORED FAQ INSERT
           post_type: 'guide',
           anchor_type: 'location',
           location_id: randomLoc.id,
