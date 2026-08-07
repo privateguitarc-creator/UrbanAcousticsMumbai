@@ -1,7 +1,6 @@
-export const prerender = false;
-
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
+import 'dotenv/config'; // Loads .env variables locally
 
 const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop',
@@ -26,21 +25,18 @@ const GUITAR_HERO_IMAGES = [
   'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?q=80&w=1200&auto=format&fit=crop'
 ];
 
-export async function GET() {
+async function generatePost() {
   try {
-    const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL;
+    const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseKey =
-      import.meta.env.SUPABASE_SERVICE_ROLE_KEY ||
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      import.meta.env.PUBLIC_SUPABASE_ANON_KEY ||
-      process.env.PUBLIC_SUPABASE_ANON_KEY;
-    const groqKey = import.meta.env.GROQ_API_KEY || process.env.GROQ_API_KEY;
+      process.env.PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_ANON_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
 
     if (!supabaseUrl || !supabaseKey || !groqKey) {
-      return new Response(
-        JSON.stringify({ error: 'Missing environment variables.' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      console.error('❌ Missing environment variables in .env file.');
+      process.exit(1);
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -49,15 +45,12 @@ export async function GET() {
     const { data: locations, error: locError } = await supabase.from('locations').select('*');
     const { data: authors } = await supabase.from('authors').select('*');
 
-    if (locError) throw new Error(`Failed to fetch locations: ${locError.message}`);
-    if (!locations || locations.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No locations found in database.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (locError || !locations || locations.length === 0) {
+      console.error('❌ Failed to fetch locations from Supabase.');
+      process.exit(1);
     }
 
-    // Select an unused image from the pool
+    // Filter unused images
     const { data: allPosts } = await supabase.from('posts').select('featured_image, hero_image');
     const usedImages = new Set(
       (allPosts || [])
@@ -120,26 +113,27 @@ Return STRICTLY a raw JSON object with keys:
         generated.faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n');
     }
 
-    // AUTOMATIC MULTI-KEYWORD LINK INJECTION
+    const escapedLoc = randomLoc.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     const autoLinkRules = [
       { pattern: /\b1-on-1 doorstep home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 doorstep home tutors](${TARGET_URL})` },
       { pattern: /\bdoorstep home tutors\b(?![^\[]*\])/gi, replacement: `[doorstep home tutors](${TARGET_URL})` },
       { pattern: /\bFurtados\b(?![^\[]*\])/g, replacement: `[Furtados](${TARGET_URL})` },
       { pattern: /\bBajaao\b(?![^\[]*\])/g, replacement: `[Bajaao](${TARGET_URL})` },
       { pattern: /\blocal luthiers\b(?![^\[]*\])/gi, replacement: `[local luthiers](${TARGET_URL})` },
-      { pattern: new RegExp(`\\bguitar classes in ${randomLoc.name}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` }
+      { pattern: new RegExp(`\\bguitar classes in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` }
     ];
 
     autoLinkRules.forEach(({ pattern, replacement }) => {
       articleBody = articleBody.replace(pattern, replacement);
     });
 
-    // Fail-safe link injection: guarantees at least one anchor link exists
     if (!articleBody.includes('guitar-classes-in-mumbai.vercel.app')) {
-      articleBody = articleBody.replace(
-        /guitar classes/i,
-        `[Guitar Classes in Mumbai](${TARGET_URL})`
-      );
+      if (/guitar classes/i.test(articleBody)) {
+        articleBody = articleBody.replace(/guitar classes/i, `[Guitar Classes in Mumbai](${TARGET_URL})`);
+      } else {
+        articleBody += `\n\nFor more details on enrollment and home lessons, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
+      }
     }
 
     const { data: insertedPost, error: insertError } = await supabase
@@ -166,15 +160,12 @@ Return STRICTLY a raw JSON object with keys:
       throw new Error(`Supabase Insert Failed: ${insertError.message}`);
     }
 
-    return new Response(JSON.stringify({ success: true, post: insertedPost[0] }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.log(`✅ Successfully published post: "${insertedPost[0].title}" (${insertedPost[0].slug})`);
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    console.error('❌ Generation script error:', err.message);
   }
 }
+
+// Run script
+generatePost();
