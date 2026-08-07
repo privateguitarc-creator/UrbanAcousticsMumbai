@@ -75,15 +75,19 @@ export async function GET() {
     const prompt = `You are an expert music instructor and SEO strategist for "Guitar Classes in Mumbai".
 Write an extensive, highly engaging, localized SEO guide (800 to 1000 words) for learning guitar in ${randomLoc.name}, Mumbai for 2026.
 
-Structuring Requirements:
+Structuring Guidelines:
 - Use clear Markdown formatting with ## H2 and ### H3 headings.
-- Include a complete 2026 guide containing:
-  1. Introduction to the local music culture and guitar scene in ${randomLoc.name}, Mumbai.
-  2. Types of Lessons Available (Acoustic, Electric, Classical, Fingerstyle).
-  3. Fee Breakdown & Cost Expectation in ${randomLoc.name} (per month / per session).
-  4. How to Choose Between 1-on-1 Home Tutors and Music Academies.
-  5. 5-Step Learning Roadmap for Beginners in 2026.
-  6. Where to Buy & Maintain Guitars Near ${randomLoc.name} (Mention stores like Furtados, Bajaao, and local luthiers).
+- Make every article unique. Structure the content around topics such as:
+  1. Overview of the guitar learning environment in ${randomLoc.name}, Mumbai.
+  2. Styles & Genres (Acoustic, Electric, Classical, Bollywood/Fingerstyle).
+  3. Realistic Lesson Fee Structures & Budget Planning in ${randomLoc.name}.
+  4. Comparing Private Home Tutors vs. Music Schools.
+  5. Practical Roadmap for Beginners.
+  6. Buying Advice, Gear Maintenance, or Local Music Resources (Vary recommendations across different music stores, online gear portals, local repair luthiers, or community jam spaces).
+
+Link Rules:
+- NEVER link third-party brand/store names to our site. If you mention external companies like Furtados, Bajaao, Yamaha, or Soundglitz, either link them to their real domain (e.g., https://www.furtadosonline.com or https://www.bajaao.com) or leave them as plain unlinked text.
+- Seamlessly include 1-2 natural markdown links pointing to our site "${TARGET_URL}" using relevant service keyphrases like [guitar classes in ${randomLoc.name}](${TARGET_URL}) or [doorstep home tutors](${TARGET_URL}).
 
 Return STRICTLY a raw JSON object with keys:
 "title": "SEO Title",
@@ -119,26 +123,24 @@ Return STRICTLY a raw JSON object with keys:
 
     const escapedLoc = randomLoc.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // ONLY TARGET SERVICE KEYWORDS FOR INTERNAL LINKS
-    const autoLinkRules = [
-      { pattern: /\b1-on-1 doorstep home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 doorstep home tutors](${TARGET_URL})` },
-      { pattern: /\bdoorstep home tutors\b(?![^\[]*\])/gi, replacement: `[doorstep home tutors](${TARGET_URL})` },
-      { pattern: /\b1-on-1 home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 home tutors](${TARGET_URL})` },
+    // Internal service backlink injection rules only (No third-party store names)
+    const internalLinkRules = [
       { pattern: new RegExp(`\\bguitar classes in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[guitar classes in ${randomLoc.name}](${TARGET_URL})` },
-      { pattern: /\bguitar classes in Mumbai\b(?![^\[]*\])/gi, replacement: `[guitar classes in Mumbai](${TARGET_URL})` },
-      { pattern: new RegExp(`\\blearn guitar in ${escapedLoc}\\b(?![^\\[]*\\])`, 'gi'), replacement: `[learn guitar in ${randomLoc.name}](${TARGET_URL})` }
+      { pattern: /\b1-on-1 doorstep home tutors\b(?![^\[]*\])/gi, replacement: `[1-on-1 doorstep home tutors](${TARGET_URL})` },
+      { pattern: /\bdoorstep home tutors\b(?![^\[]*\])/gi, replacement: `[doorstep home tutors](${TARGET_URL})` }
     ];
 
-    autoLinkRules.forEach(({ pattern, replacement }) => {
+    // Apply internal linking for service keywords if not already linked by the AI
+    internalLinkRules.forEach(({ pattern, replacement }) => {
       articleBody = articleBody.replace(pattern, replacement);
     });
 
-    // Fail-safe backlink check
-    if (!articleBody.includes('guitar-classes-in-mumbai.vercel.app')) {
+    // Fallback: Ensure at least one internal backlink exists in the post
+    if (!articleBody.includes(TARGET_URL)) {
       if (/guitar classes/i.test(articleBody)) {
         articleBody = articleBody.replace(/guitar classes/i, `[Guitar Classes in Mumbai](${TARGET_URL})`);
       } else {
-        articleBody += `\n\nFor more details on enrollment and home lessons, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
+        articleBody += `\n\nFor personalized home lessons and tutor inquiries, visit [Guitar Classes in Mumbai](${TARGET_URL}).`;
       }
     }
 
