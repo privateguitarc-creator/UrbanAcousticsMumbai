@@ -6,6 +6,7 @@ import { marked } from 'marked';
 
 const { slug } = Astro.params;
 
+// 1. Fetch current post
 const { data: post, error } = await supabase
   .from('posts')
   .select('*')
@@ -16,18 +17,26 @@ if (error || !post) {
   return Astro.redirect('/404');
 }
 
-const { data: relatedPosts } = await supabase
+// 2. Fetch a pool of posts and pick 3 randomly
+const { data: rawRelated } = await supabase
   .from('posts')
   .select('title, slug')
   .neq('slug', slug)
-  .limit(3);
+  .limit(20);
 
+const relatedPosts = (rawRelated || [])
+  .sort(() => Math.random() - 0.5)
+  .slice(0, 3);
+
+// 3. Fail-safe Default Image
 const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1200&auto=format&fit=crop';
 const displayImage = post.hero_image || post.featured_image || DEFAULT_HERO_IMAGE;
 
+// 4. Clean content & parse markdown
 const cleanContent = post.content ? post.content.replace(/!\[.*?\]\(.*?\)/g, '').trim() : '';
 const htmlContent = cleanContent ? marked.parse(cleanContent) : '';
 
+// 5. Article Schema
 const articleSchema = {
   "@context": "https://schema.org",
   "@type": "Article",
@@ -45,6 +54,7 @@ const articleSchema = {
   }
 };
 
+// 6. FAQ Schema
 let faqSchema = null;
 if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
   faqSchema = {
@@ -69,6 +79,7 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
     <title>{post.title} | Urban Acoustics Mumbai</title>
     <meta name="description" content={post.summary || post.meta_description || post.title} />
 
+    <!-- Structured Data -->
     <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
     {faqSchema && (
       <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
@@ -90,9 +101,11 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
           style="width: 100%; height: 380px; object-fit: cover; border-radius: 8px; margin-bottom: 2rem;" 
         />
 
+        <!-- Rendered HTML Content -->
         <div class="content" set:html={htmlContent} />
       </article>
 
+      <!-- Doorstep Masterclass CTA Section -->
       <div style="margin: 3rem 0; padding: 2.5rem 2rem; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; text-align: center;">
         <h3 style="font-size: 1.35rem; font-weight: 700; color: #1e3a8a; margin-top: 0; margin-bottom: 0.5rem;">
           Want Personalized Guitar Coaching at Home?
@@ -131,6 +144,7 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
       )}
     </main>
 
+    <!-- Global Styles -->
     <style is:global>
       .content h1, .content h2, .content h3 {
         margin-top: 2rem;
