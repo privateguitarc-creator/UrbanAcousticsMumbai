@@ -98,7 +98,7 @@ Return STRICTLY a raw JSON object with keys:
 
     const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       max_tokens: 4000,
       response_format: { type: 'json_object' }
     });

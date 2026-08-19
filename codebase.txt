@@ -440,7 +440,7 @@ Format the output strictly in Markdown with these guidelines:
 
   const chatCompletion = await groq.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'llama-3.3-70b-versatile',
+    model: 'llama-3.1-8b-instant',
   });
 
   const rawMarkdown = chatCompletion.choices[0]?.message?.content || '';
@@ -501,7 +501,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
 
 // Groq's high-quality model (Free Tier)
-const MODEL_NAME = 'llama-3.3-70b-versatile';
+const MODEL_NAME = 'llama-3.1-8b-instant';
 
 if (!SUPABASE_KEY || !GROQ_API_KEY) {
   console.error("Missing SUPABASE_KEY or GROQ_API_KEY in environment variables.");
@@ -738,7 +738,7 @@ Requirements for Search Engine Ranking:
         { role: 'system', content: 'You create expert-level, authoritative local educational content formatted in clean Markdown.' },
         { role: 'user', content: prompt }
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       temperature: 0.6,
     });
 
