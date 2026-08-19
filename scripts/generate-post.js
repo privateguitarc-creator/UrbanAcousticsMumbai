@@ -8,7 +8,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
 
 // Groq's high-quality model (Free Tier)
-const MODEL_NAME = 'llama-3.1-8b-instant';
+const MODEL_NAME = 'openai/gpt-oss-120b';
 
 if (!SUPABASE_KEY || !GROQ_API_KEY) {
   console.error("Missing SUPABASE_KEY or GROQ_API_KEY in environment variables.");

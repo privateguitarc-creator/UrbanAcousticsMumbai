@@ -52,7 +52,7 @@ Format the output strictly in Markdown with these guidelines:
 
   const chatCompletion = await groq.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'llama-3.1-8b-instant',
+    model: 'openai/gpt-oss-120b',
   });
 
   const rawMarkdown = chatCompletion.choices[0]?.message?.content || '';
