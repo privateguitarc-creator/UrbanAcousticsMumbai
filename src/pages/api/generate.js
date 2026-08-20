@@ -72,25 +72,34 @@ export async function GET() {
 
     const TARGET_URL = 'https://guitar-classes-in-mumbai.vercel.app/';
 
-    const prompt = `You are an expert music instructor and SEO strategist for "Guitar Classes in Mumbai".
-Write an extensive, highly engaging, localized SEO guide (800 to 1000 words) for learning guitar in ${randomLoc.name}, Mumbai for 2026.
+    const prompt = `You are a master guitar instructor and local Mumbai guide writer for "Guitar Classes in Mumbai".
+Write an extensive, comprehensive, and engaging local guide (800 to 1000 words) for learning guitar in ${randomLoc.name}, Mumbai for 2026.
+
+STRICT TITLE RULES:
+- Generate a natural, human, and exciting title.
+- NEVER include internal marketing words like "SEO", "Optimized", "Keyword", or "Article" anywhere in the title.
+- Examples of great titles:
+  * "Best Guitar Classes in ${randomLoc.name}, Mumbai (2026 Guide)"
+  * "Mastering Guitar in ${randomLoc.name}: 2026 Comprehensive Guide"
+  * "Learn Guitar in ${randomLoc.name}, Mumbai: Private Tutors, Classes & Fees"
+  * "Top Options for Learning Guitar in ${randomLoc.name} (2026 Guide)"
 
 Structuring Guidelines:
 - Use clear Markdown formatting with ## H2 and ### H3 headings.
-- Make every article unique. Structure the content around topics such as:
+- Structure content logically around:
   1. Overview of the guitar learning environment in ${randomLoc.name}, Mumbai.
   2. Styles & Genres (Acoustic, Electric, Classical, Bollywood/Fingerstyle).
   3. Realistic Lesson Fee Structures & Budget Planning in ${randomLoc.name}.
   4. Comparing Private Home Tutors vs. Music Schools.
   5. Practical Roadmap for Beginners.
-  6. Buying Advice, Gear Maintenance, or Local Music Resources (Vary recommendations across different music stores, online gear portals, local repair luthiers, or community jam spaces).
+  6. Buying Advice, Gear Maintenance, or Local Music Resources.
 
 Link Rules:
 - NEVER link third-party brand/store names to our site. If you mention external companies like Furtados, Bajaao, Yamaha, or Soundglitz, either link them to their real domain (e.g., https://www.furtadosonline.com or https://www.bajaao.com) or leave them as plain unlinked text.
 - Seamlessly include 1-2 natural markdown links pointing to our site "${TARGET_URL}" using relevant service keyphrases like [guitar classes in ${randomLoc.name}](${TARGET_URL}) or [doorstep home tutors](${TARGET_URL}).
 
 Return STRICTLY a raw JSON object with keys:
-"title": "SEO Title",
+"title": "Natural Article Title (Strictly NO words like SEO)",
 "slug": "url-friendly-slug",
 "excerpt": "Compelling 2-sentence search snippet",
 "content": "Full markdown body of 800-1000 words",
@@ -108,8 +117,16 @@ Return STRICTLY a raw JSON object with keys:
 
     const generated = JSON.parse(rawContent);
 
-    const baseSlug = (generated.slug || generated.title || 'guitar-classes')
+    // Fail-safe title sanitization: Automatically strip accidental jargon if generated
+    let cleanTitle = (generated.title || `Guitar Classes in ${randomLoc.name}, Mumbai`)
+      .replace(/\bSEO\b/gi, '')
+      .replace(/\bOptimized\b/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    const baseSlug = (generated.slug || cleanTitle)
       .toLowerCase()
+      .replace(/\bseo\b/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '');
     const uniqueSlug = `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -148,7 +165,7 @@ Return STRICTLY a raw JSON object with keys:
       .from('posts')
       .insert([
         {
-          title: generated.title,
+          title: cleanTitle,
           slug: uniqueSlug,
           summary: generated.excerpt || generated.summary || '',
           content: articleBody,
