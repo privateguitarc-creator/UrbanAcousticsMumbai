@@ -1,5 +1,6 @@
 ---
 export const prerender = false;
+Astro.response.headers.set('X-Robots-Tag', 'noindex, follow');
 
 import { supabase } from '../../lib/supabase';
 import { marked } from 'marked';
@@ -77,7 +78,7 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{post.title} | Urban Acoustics Mumbai</title>
     <meta name="description" content={description} />
-    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="robots" content="noindex,follow" />
     <link rel="canonical" href={canonicalURL} />
 
     <meta property="og:type" content="article" />
@@ -109,6 +110,9 @@ if (post.faqs && Array.isArray(post.faqs) && post.faqs.length > 0) {
 
           <img src={displayImage} alt={post.title} class="hero" />
 
+          <div class="disclosure">
+            <strong>Legacy article under editorial review.</strong> This page was created by an earlier automated publishing system. Local business names, prices, timings, travel estimates and other time-sensitive details may be inaccurate and should not be relied on until the article has been manually reviewed.
+          </div>
           <div class="disclosure">
             <strong>Editorial disclosure:</strong> Urban Acoustics Mumbai and Guitar Classes in Mumbai have the same owner. Where this article links to that service, the relationship is disclosed rather than presented as an independent endorsement.
           </div>
