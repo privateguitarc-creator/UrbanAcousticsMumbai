@@ -8,50 +8,47 @@ const SITE_URL = 'https://urban-acoustics-mumbai.vercel.app';
 interface PostData {
   slug: string;
   published_at?: string;
+  updated_at?: string;
 }
 
+const escapeXml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
 export const GET: APIRoute = async () => {
-  // 1. Fetch slug AND published_at for authentic modification dates
   const { data: posts, error } = await supabase
     .from('posts')
-    .select('slug, published_at')
+    .select('slug, published_at, updated_at')
     .order('published_at', { ascending: false });
 
-  if (error) {
-    console.error('Sitemap fetch error:', error);
-  }
+  if (error) console.error('Sitemap fetch error:', error);
 
   const postUrls = ((posts as PostData[]) || [])
-    .map(
-      (post) => `
+    .filter((post) => post.slug)
+    .map((post) => {
+      const rawDate = post.updated_at || post.published_at;
+      const lastmod = rawDate ? `\n    <lastmod>${new Date(rawDate).toISOString()}</lastmod>` : '';
+      return `
   <url>
-    <loc>${SITE_URL}/posts/${post.slug}</loc>
-    <lastmod>${new Date(post.published_at || Date.now()).toISOString()}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`
-    )
+    <loc>${escapeXml(`${SITE_URL}/posts/${post.slug}`)}</loc>${lastmod}
+  </url>`;
+    })
     .join('');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${SITE_URL}/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
   </url>
   <url>
     <loc>${SITE_URL}/guides</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
   </url>${postUrls}
 </urlset>`;
 
   return new Response(xml.trim(), {
     status: 200,
     headers: {
-      'Content-Type': 'application/xml',
-      'Cache-Control': 'public, max-age=0, must-revalidate',
-    },
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=0, s-maxage=3600'
+    }
   });
 };
