@@ -10,6 +10,9 @@ export const GET: APIRoute = async () => {
   <url>
     <loc>${SITE_URL}/</loc>
   </url>
+  <url>
+    <loc>${SITE_URL}/home-guitar-lessons-mumbai-guide</loc>
+  </url>
 </urlset>`;
 
   return new Response(xml.trim(), {
